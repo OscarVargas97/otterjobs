@@ -1,12 +1,13 @@
 # otterjobs
 
-App de escritorio para la búsqueda de trabajo: tablero de postulaciones, tareas con vencimiento, bandeja de Gmail y Claude Code a un clic. Lee y escribe los datos del carpeta de datos.
+App de escritorio para la búsqueda de trabajo: tablero de postulaciones, tareas con vencimiento, bandeja de Gmail y Claude Code a un clic. Los datos (`otterjobs.db`, fichas, CV) viven en una carpeta aparte con su propio repo privado.
 
 ## Levantarla
 
 ```sh
 pnpm install
 pnpm otterjobs datos <carpeta>   # una vez
+pnpm otterjobs migrar   # solo si la carpeta aún tiene tracker.csv y tareas.md
 pnpm dev
 ```
 

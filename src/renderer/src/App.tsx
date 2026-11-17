@@ -1,23 +1,23 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Bot, CalendarClock, ExternalLink, FolderOpen, Inbox, KanbanSquare, Mail, Plus, RefreshCw, X } from 'lucide-react'
 import type { Correo } from '../../core/gmail.ts'
-import type { TareaMd } from '../../core/tareas-md.ts'
-import type { Fila, Tarea } from '../../core/tracker.ts'
+import type { Pendiente } from '../../core/pendientes.ts'
+import type { Evento, Fila, Tarea } from '../../core/tracker.ts'
 import type { Pedido } from '../../core/claude.ts'
 
 type Estado = {
   datos: string | null
   filas?: Fila[]
   tareas?: Tarea[]
-  tareasMd?: TareaMd[]
+  pendientes?: Pendiente[]
   inbox?: (Correo & { enlace: string })[]
   gmail?: boolean
   rutaEnv?: string
   version?: string
 }
 type Api = {
-  [k in 'cargar' | 'elegirDatos' | 'actualizar' | 'agregar' | 'tareaMd' | 'nuevaTareaMd' | 'escanear' | 'revisado' | 'claude']: (...a: unknown[]) => Promise<Estado>
-} & { abrir: (url: string) => void; alCambiar: (cb: (e: Estado) => void) => () => void }
+  [k in 'cargar' | 'elegirDatos' | 'actualizar' | 'agregar' | 'marcarPendiente' | 'nuevoPendiente' | 'escanear' | 'revisado' | 'claude']: (...a: unknown[]) => Promise<Estado>
+} & { historial: (orden: string) => Promise<Evento[]>; abrir: (url: string) => void; alCambiar: (cb: (e: Estado) => void) => () => void }
 const api = (window as unknown as { api: Api }).api
 
 const COLUMNAS = ['Por postular', 'Postulado', 'Entrevista', 'Oferta', 'Cerradas'] as const
@@ -53,7 +53,7 @@ export function App() {
       <div className="grid h-full place-items-center">
         <div className="max-w-sm space-y-3 text-center">
           <h1 className="text-xl font-semibold">otterjobs</h1>
-          <p className="text-sm text-muted-foreground">Elige la carpeta de datos (la que tiene postulaciones/tracker.csv).</p>
+          <p className="text-sm text-muted-foreground">Elige la carpeta de datos (la que tiene otterjobs.db).</p>
           <Boton onClick={() => hacer(api.elegirDatos)}>
             <FolderOpen /> Elegir carpeta
           </Boton>
@@ -121,9 +121,9 @@ function Hoy({ s, abrir, hacer }: { s: Estado; abrir: (o: string) => void; hacer
 
       <Titulo>Otras tareas</Titulo>
       <div className="space-y-1">
-        {(s.tareasMd ?? []).map((t) => (
-          <label key={t.linea} className={`flex items-start gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent ${t.hecha ? 'text-muted-foreground line-through' : ''}`}>
-            <input type="checkbox" className="mt-1" checked={t.hecha} onChange={(e) => hacer(() => api.tareaMd(t.linea, t.texto, e.target.checked))} />
+        {(s.pendientes ?? []).map((t) => (
+          <label key={t.id} className={`flex items-start gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent ${t.hecha ? 'text-muted-foreground line-through' : ''}`}>
+            <input type="checkbox" className="mt-1" checked={t.hecha} onChange={(e) => hacer(() => api.marcarPendiente(t.id, e.target.checked))} />
             {t.texto}
           </label>
         ))}
@@ -131,7 +131,7 @@ function Hoy({ s, abrir, hacer }: { s: Estado; abrir: (o: string) => void; hacer
           className="flex gap-2 pt-2"
           onSubmit={(e) => {
             e.preventDefault()
-            if (nueva.trim()) hacer(() => api.nuevaTareaMd(nueva)), setNueva('')
+            if (nueva.trim()) hacer(() => api.nuevoPendiente(nueva)), setNueva('')
           }}>
           <input value={nueva} onChange={(e) => setNueva(e.target.value)} placeholder="Nueva tarea…" className="campo flex-1" />
           <Boton type="submit" variante="outline"><Plus /> Agregar</Boton>
@@ -280,6 +280,8 @@ function Detalle({ fila, cerrar, hacer }: { fila: Fila; cerrar: () => void; hace
   const cambios = Object.fromEntries(Object.entries(d).filter(([k, v]) => k !== 'orden' && v !== fila[k as keyof Fila]))
   const sucio = Object.keys(cambios).length > 0
   const set = (k: keyof Fila) => (e: { target: { value: string } }) => setD({ ...d, [k]: e.target.value })
+  const [eventos, setEventos] = useState<Evento[]>([])
+  useEffect(() => void api.historial(fila.orden).then((e) => setEventos(e.reverse()), () => setEventos([])), [fila])
   return (
     <aside className="flex w-[440px] shrink-0 flex-col border-l border-border bg-sidebar">
       <header className="flex items-start gap-2 border-b border-border p-4">
@@ -306,7 +308,17 @@ function Detalle({ fila, cerrar, hacer }: { fila: Fila; cerrar: () => void; hace
         <Campo t="Modalidad"><input className="campo" value={d.modalidad} onChange={set('modalidad')} /></Campo>
         <Campo t="Próximo paso"><textarea rows={6} className="campo" value={d.proximo_paso} onChange={set('proximo_paso')} /></Campo>
         <Campo t="Notas"><textarea rows={6} className="campo" value={d.notas} onChange={set('notas')} /></Campo>
-        <Campo t="Ficha"><input className="campo" value={d.ficha} onChange={set('ficha')} /></Campo>
+        <Campo t="Carpeta"><input className="campo" value={d.ficha} onChange={set('ficha')} /></Campo>
+        {eventos.length > 0 && (
+          <div className="space-y-1">
+            <span className="text-2xs font-medium text-muted-foreground">Historial</span>
+            {eventos.map((e, i) => (
+              <div key={i} className="text-xs text-muted-foreground">
+                <span className="tabular-nums">{e.fecha}</span> · <span className="text-foreground">{e.campo}</span> → <span className="line-clamp-1 inline">{e.despues || '∅'}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       <footer className="flex justify-end gap-2 border-t border-border p-3">
         <Boton variante="ghost" disabled={!sucio} onClick={() => setD(fila)}>Descartar</Boton>

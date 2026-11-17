@@ -1,14 +1,17 @@
 // CLI de otterjobs: lo mismo que la app, para Claude Code y la terminal.
-//   pnpm otterjobs ver [--estado Postulado] [--q texto] | stats | tareas
+//   pnpm otterjobs ver [--estado Postulado] [--q texto] | stats | tareas | historial ORDEN
 //   pnpm otterjobs set ORDEN campo=valor ... | add empresa=X cargo=Y ...
+//   pnpm otterjobs pendiente "texto" | hecha ID
 //   pnpm otterjobs gmail [--dias 7] | gmail --pendientes | gmail --revisado
-//   pnpm otterjobs datos <carpeta de datos>
+//   pnpm otterjobs datos <carpeta> | migrar
 import { carpetaDatos, credencialesGmail, guardarCarpetaDatos, RUTA_ENV, rutas } from './core/config.ts'
+import { usar } from './core/db.ts'
 import { escanear, leerInbox, marcarRevisado } from './core/gmail.ts'
-import { leerTareasMd } from './core/tareas-md.ts'
-import { actualizar, agregar, ESTADOS, isoHoy, leer, tareas, type Fila } from './core/tracker.ts'
+import { migrar } from './core/migrar.ts'
+import { agregarPendiente, leerPendientes, marcarPendiente } from './core/pendientes.ts'
+import { actualizar, agregar, ESTADOS, historial, isoHoy, leer, tareas, type Fila } from './core/tracker.ts'
 
-const ayuda = `uso: otterjobs ver [--estado X] [--q texto] | stats | tareas | set ORDEN campo=valor ... | add campo=valor ... | gmail [--dias N | --pendientes | --revisado] | datos <carpeta>`
+const ayuda = `uso: otterjobs ver [--estado X] [--q texto] | stats | tareas | historial ORDEN | set ORDEN campo=valor ... | add campo=valor ... | pendiente "texto" | hecha ID | gmail [--dias N | --pendientes | --revisado] | datos <carpeta> | migrar`
 const corto = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1) + '…').padEnd(n)
 const opcion = (a: string[], k: string) => (a.includes(k) ? a[a.indexOf(k) + 1] : undefined)
 
@@ -33,50 +36,68 @@ async function main(a: string[]) {
   const datos = carpetaDatos()
   if (!datos) throw new Error('Falta la carpeta de datos: otterjobs datos <carpeta>')
   const r = rutas(datos)
+  if (cmd === 'gmail' && !resto.includes('--revisado') && !resto.includes('--pendientes')) {
+    const cred = credencialesGmail()
+    if (!cred) throw new Error(`Faltan GMAIL_USER y GMAIL_APP_PASSWORD en ${RUTA_ENV}`)
+    const filas = usar(r.db, leer) // la base no queda abierta durante el escaneo
+    const { nuevos, pendientes } = await escanear(cred, filas, r.inbox, Number(opcion(resto, '--dias') ?? 7))
+    return console.log(`${nuevos} correos nuevos de postulaciones. Pendientes: ${pendientes}.`)
+  }
 
-  switch (cmd) {
-    case 'ver': {
-      const estado = opcion(resto, '--estado')
-      const q = opcion(resto, '--q')?.toLowerCase()
-      return leer(r.tracker)
-        .filter((f) => (!estado || f.estado === estado) && (!q || Object.values(f).join(' ').toLowerCase().includes(q)))
-        .forEach((f) => console.log(linea(f)))
-    }
-    case 'stats': {
-      const filas = leer(r.tracker)
-      for (const e of ESTADOS) console.log(`${e.padEnd(13)} ${filas.filter((f) => f.estado === e).length}`)
-      return console.log(`${'Total'.padEnd(13)} ${filas.length}`)
-    }
-    case 'tareas': {
-      for (const t of tareas(leer(r.tracker))) console.log(`[${t.vence || 'sin fecha'}] ${t.vencida ? 'VENCIDA ' : ''}#${t.orden} ${t.empresa}: ${t.paso.slice(0, 160)}`)
-      const otras = leerTareasMd(r.tareasMd).filter((t) => !t.hecha)
-      if (otras.length) console.log('\nOtras (tareas.md):\n' + otras.map((t) => `  - ${t.texto}`).join('\n'))
-      return
-    }
-    case 'set': {
-      if (!resto[0] || resto.length < 2) throw new Error('uso: set ORDEN campo=valor ...')
-      const f = actualizar(r.tracker, resto[0], pares(resto.slice(1)))
-      return console.log(`Actualizada: ${f.empresa} → #${f.orden} (${f.estado})`)
-    }
-    case 'add': {
-      const f = agregar(r.tracker, pares(resto))
-      return console.log(`Agregada: ${f.empresa} → #${f.orden}`)
-    }
-    case 'gmail': {
-      if (resto.includes('--revisado')) return marcarRevisado(r.inbox, 'todos', isoHoy()), console.log('Todo marcado como revisado.')
-      if (resto.includes('--pendientes')) {
+  usar(r.db, (db) => {
+    switch (cmd) {
+      case 'migrar': {
+        const n = migrar(db, datos)
+        return console.log(`Migradas ${n.postulaciones} postulaciones y ${n.pendientes} tareas a ${r.db}. Comprueba con «ver» y «tareas» antes de borrar tracker.csv y tareas.md.`)
+      }
+      case 'ver': {
+        const estado = opcion(resto, '--estado')
+        const q = opcion(resto, '--q')?.toLowerCase()
+        return leer(db)
+          .filter((f) => (!estado || f.estado === estado) && (!q || Object.values(f).join(' ').toLowerCase().includes(q)))
+          .forEach((f) => console.log(linea(f)))
+      }
+      case 'stats': {
+        const filas = leer(db)
+        for (const e of ESTADOS) console.log(`${e.padEnd(13)} ${filas.filter((f) => f.estado === e).length}`)
+        return console.log(`${'Total'.padEnd(13)} ${filas.length}`)
+      }
+      case 'tareas': {
+        for (const t of tareas(leer(db))) console.log(`[${t.vence || 'sin fecha'}] ${t.vencida ? 'VENCIDA ' : ''}#${t.orden} ${t.empresa}: ${t.paso.slice(0, 160)}`)
+        const otras = leerPendientes(db).filter((t) => !t.hecha)
+        if (otras.length) console.log('\nOtras tareas:\n' + otras.map((t) => `  [${t.id}] ${t.texto}`).join('\n'))
+        return
+      }
+      case 'historial': {
+        if (!resto[0]) throw new Error('uso: historial ORDEN')
+        for (const e of historial(db, resto[0])) console.log(`${e.fecha}  ${e.campo}: ${corto(e.antes || '∅', 40)} → ${e.despues}`)
+        return
+      }
+      case 'set': {
+        if (!resto[0] || resto.length < 2) throw new Error('uso: set ORDEN campo=valor ...')
+        const f = actualizar(db, resto[0], pares(resto.slice(1)))
+        return console.log(`Actualizada: ${f.empresa} → #${f.orden} (${f.estado})`)
+      }
+      case 'add': {
+        const f = agregar(db, pares(resto))
+        return console.log(`Agregada: ${f.empresa} → #${f.orden}`)
+      }
+      case 'pendiente':
+        agregarPendiente(db, resto.join(' '))
+        return console.log('Tarea agregada.')
+      case 'hecha':
+        marcarPendiente(db, Number(resto[0]), true)
+        return console.log(`Tarea ${resto[0]} hecha.`)
+      case 'gmail': {
+        if (resto.includes('--revisado')) return marcarRevisado(r.inbox, 'todos', isoHoy()), console.log('Todo marcado como revisado.')
         for (const c of leerInbox(r.inbox).filter((c) => !c.revisado))
           console.log(`[${c.fecha}] ${c.empresa || '¿?'} (#${c.orden || '-'}) | ${c.de}\n  ${c.asunto}\n  ${c.extracto.slice(0, 300)}\n`)
         return
       }
-      const cred = credencialesGmail()
-      if (!cred) throw new Error(`Faltan GMAIL_USER y GMAIL_APP_PASSWORD en ${RUTA_ENV}`)
-      const { nuevos, pendientes } = await escanear(cred, leer(r.tracker), r.inbox, Number(opcion(resto, '--dias') ?? 7))
-      return console.log(`${nuevos} correos nuevos de postulaciones. Pendientes: ${pendientes}.`)
+      default:
+        console.log(ayuda)
     }
-    default:
-      console.log(ayuda)
-  }
+  })
 }
 
 main(process.argv.slice(2)).catch((e: Error) => {

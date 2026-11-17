@@ -2,6 +2,15 @@
 
 Lo que trae cada versión de otterjobs, lo más nuevo arriba.
 
+## Sin publicar
+
+`refactor/datos-sqlite`
+
+### Cambios
+- Las postulaciones y las tareas pasan de `tracker.csv` y `tareas.md` a `otterjobs.db` (SQLite). `pnpm otterjobs migrar` las trae una sola vez.
+- **Historial**: cada cambio de una postulación queda registrado y se ve en el panel de detalle y con `otterjobs historial ORDEN`.
+- Tareas sueltas desde la CLI: `otterjobs pendiente "texto"` y `otterjobs hecha ID`.
+
 ## 0.1.0 · Primera versión
 
 `fase/1-base` · F1: el sistema de postulaciones de la carpeta de datos pasa a una app de escritorio

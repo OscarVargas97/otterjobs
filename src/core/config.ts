@@ -1,5 +1,5 @@
 // Configuración y credenciales en ~/.otterjobs (fuera de los repos), compartidas por la app y la CLI.
-// Los datos viven en la carpeta de datos; el código, en otterjobs.
+// Los datos viven en su propia carpeta (repo privado, otterjobs/datos); el código, en otterjobs.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -13,7 +13,8 @@ type Config = { datos?: string }
 const leerConfig = (): Config => (existsSync(CONFIG) ? JSON.parse(readFileSync(CONFIG, 'utf8')) : {})
 
 export function guardarCarpetaDatos(datos: string): void {
-  if (!existsSync(join(datos, 'postulaciones', 'tracker.csv'))) throw new Error(`${datos} no tiene postulaciones/tracker.csv`)
+  // tracker.csv sirve solo para poder elegir la carpeta antes de `otterjobs migrar`
+  if (!existsSync(join(datos, 'otterjobs.db')) && !existsSync(join(datos, 'postulaciones', 'tracker.csv'))) throw new Error(`${datos} no tiene otterjobs.db`)
   mkdirSync(DIR_CONFIG, { recursive: true })
   writeFileSync(CONFIG, JSON.stringify({ ...leerConfig(), datos }, null, 2))
 }
@@ -26,8 +27,8 @@ export function carpetaDatos(): string | null {
 export function rutas(datos: string) {
   return {
     datos,
-    tracker: join(datos, 'postulaciones', 'tracker.csv'),
-    tareasMd: join(datos, 'tareas.md'),
+    db: join(datos, 'otterjobs.db'),
+    // los correos quedan en fuentes/ (no se versiona); la base sí se versiona
     inbox: join(datos, 'fuentes', 'gmail', 'inbox.json')
   }
 }

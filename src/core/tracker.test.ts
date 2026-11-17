@@ -1,69 +1,95 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { actualizar, agregar, CAMPOS, leer, parseCsv, tareas, toCsv } from './tracker.ts'
-import { agregarTareaMd, leerTareasMd, marcarTareaMd } from './tareas-md.ts'
+import { abrir } from './db.ts'
+import { migrar, parseCsv } from './migrar.ts'
+import { agregarPendiente, leerPendientes, marcarPendiente } from './pendientes.ts'
+import { actualizar, agregar, CAMPOS, historial, insertar, leer, tareas, type Campo } from './tracker.ts'
 import { clavesEmpresa, empresaDe, esReclutamiento } from './gmail.ts'
 import { armarPedido } from './claude.ts'
 
-const fila = (o: Record<string, string>) => CAMPOS.map((c) => o[c] ?? '')
-function tracker(filas: Record<string, string>[]): string {
-  const ruta = join(mkdtempSync(join(tmpdir(), 'oj-')), 'tracker.csv')
-  writeFileSync(ruta, '﻿' + toCsv([[...CAMPOS], ...filas.map(fila)]))
-  return ruta
+const vacia = () => Object.fromEntries(CAMPOS.map((c) => [c, ''])) as Record<Campo, string>
+function base(filas: Partial<Record<Campo, string>>[]) {
+  const db = abrir(':memory:')
+  filas.forEach((f, i) => insertar(db, { ...vacia(), orden: String(i + 1), ...f }))
+  return db
 }
 
-test('csv: ida y vuelta con ; comillas y saltos de línea', () => {
-  const datos = [['a;b', 'dijo "hola"', 'línea\nnueva', '']]
-  assert.deepEqual(parseCsv(toCsv(datos)), datos)
-})
+/** Una carpeta de datos antigua: postulaciones/tracker.csv (con BOM) y tareas.md. */
+function carpetaAntigua(csv: string, md = '') {
+  const dir = mkdtempSync(join(tmpdir(), 'oj-'))
+  mkdirSync(join(dir, 'postulaciones'))
+  writeFileSync(join(dir, 'postulaciones', 'tracker.csv'), '﻿' + CAMPOS.join(';') + '\n' + csv)
+  if (md) writeFileSync(join(dir, 'tareas.md'), md)
+  return dir
+}
 
-test('leer rechaza una fila con ; sin escapar en vez de perder datos', () => {
-  const ruta = tracker([])
-  writeFileSync(ruta, readFileSync(ruta, 'utf8') + '1;Alta;Postulado;X;Y;;;;;paso; con punto y coma;;;\n')
-  assert.throws(() => leer(ruta), /sin comillas/)
-})
-
-test('actualizar valida, reordena por estado y prob, y conserva el BOM', () => {
-  const ruta = tracker([
-    { orden: '1', prob: 'Baja', estado: 'Postulado', empresa: 'A', cargo: 'x' },
-    { orden: '2', prob: 'Alta', estado: 'Por postular', empresa: 'B', cargo: 'y' }
+test('actualizar valida, reordena por estado y prob, y registra el historial', () => {
+  const db = base([
+    { prob: 'Baja', estado: 'Postulado', empresa: 'A', cargo: 'x' },
+    { prob: 'Alta', estado: 'Por postular', empresa: 'B', cargo: 'y' }
   ])
-  const f = actualizar(ruta, '2', { estado: 'Entrevista', proximo_paso: 'llamar; luego "algo"' })
+  const f = actualizar(db, '2', { estado: 'Entrevista', proximo_paso: 'llamar; luego "algo"' })
   assert.equal(f.orden, '1')
-  assert.ok(readFileSync(ruta, 'utf8').startsWith('﻿'))
-  assert.equal(leer(ruta)[0].proximo_paso, 'llamar; luego "algo"')
-  assert.throws(() => actualizar(ruta, '1', { estado: 'Inventado' }), /estado inválido/)
-  assert.throws(() => actualizar(ruta, '1', { orden: '9' }), /campo desconocido/)
-  assert.throws(() => actualizar(ruta, '1', { vence: 'mañana' }), /AAAA-MM-DD/)
+  assert.equal(leer(db)[0].proximo_paso, 'llamar; luego "algo"')
+  assert.deepEqual(historial(db, '1').map((e) => [e.campo, e.antes, e.despues]), [['estado', 'Por postular', 'Entrevista'], ['proximo_paso', '', 'llamar; luego "algo"']])
+  assert.throws(() => actualizar(db, '1', { estado: 'Inventado' }), /estado inválido/)
+  assert.throws(() => actualizar(db, '1', { orden: '9' }), /campo desconocido/)
+  assert.throws(() => actualizar(db, '1', { 'estado = 1; --': 'x' }), /campo desconocido/)
+  assert.throws(() => actualizar(db, '1', { vence: 'mañana' }), /AAAA-MM-DD/)
+  assert.equal(historial(db, '1').length, 2) // lo rechazado no deja rastro
 })
 
-test('agregar evita duplicados por url', () => {
-  const ruta = tracker([{ orden: '1', prob: 'Media', estado: 'Postulado', empresa: 'A', cargo: 'x', url: 'https://a' }])
-  assert.equal(agregar(ruta, { empresa: 'B', cargo: 'y' }, '2026-11-12').estado, 'Por postular')
-  assert.throws(() => agregar(ruta, { empresa: 'C', cargo: 'z', url: 'https://a' }), /ya existe/)
+test('agregar evita duplicados por url y queda ordenada', () => {
+  const db = base([{ prob: 'Media', estado: 'Postulado', empresa: 'A', cargo: 'x', url: 'https://a' }])
+  const b = agregar(db, { empresa: 'B', cargo: 'y' }, '2026-11-12')
+  assert.deepEqual([b.estado, b.orden, b.publicada], ['Por postular', '2', '2026-11-12'])
+  assert.throws(() => agregar(db, { empresa: 'C', cargo: 'z', url: 'https://a' }), /ya existe/)
+  assert.equal(leer(db).length, 2)
 })
 
 test('tareas: solo activas con paso, vencidas marcadas, sin fecha al final', () => {
-  const ruta = tracker([
+  const db = base([
     { estado: 'Entrevista', empresa: 'A', cargo: 'x', proximo_paso: 'p', vence: '2026-11-10' },
     { estado: 'Postulado', empresa: 'B', cargo: 'y', proximo_paso: 'q' },
     { estado: 'Por postular', empresa: 'C', cargo: 'z', proximo_paso: 'r', vence: '2026-11-01' }
   ])
-  const t = tareas(leer(ruta), '2026-11-12')
+  const t = tareas(leer(db), '2026-11-12')
   assert.deepEqual(t.map((x) => [x.empresa, x.vencida]), [['A', true], ['B', false]])
 })
 
-test('tareas.md: leer, marcar y agregar', () => {
-  const ruta = join(mkdtempSync(join(tmpdir(), 'oj-')), 'tareas.md')
-  writeFileSync(ruta, '# T\r\n\r\n- [ ] uno\r\n- [x] dos\r\n')
-  const [uno] = leerTareasMd(ruta)
-  marcarTareaMd(ruta, uno.linea, uno.texto, true)
-  assert.throws(() => marcarTareaMd(ruta, uno.linea, 'otro', false), /cambió/)
-  agregarTareaMd(ruta, 'tres')
-  assert.deepEqual(leerTareasMd(ruta).map((t) => [t.texto, t.hecha]), [['uno', true], ['dos', true], ['tres', false]])
+test('pendientes: agregar, marcar y las hechas al final', () => {
+  const db = abrir(':memory:')
+  agregarPendiente(db, 'uno\r\nlínea')
+  agregarPendiente(db, 'dos')
+  marcarPendiente(db, leerPendientes(db)[0].id, true)
+  assert.deepEqual(leerPendientes(db).map((t) => [t.texto, t.hecha]), [['dos', false], ['uno línea', true]])
+  assert.throws(() => agregarPendiente(db, '  '), /vacía/)
+  assert.throws(() => marcarPendiente(db, 99, true), /no existe/)
+})
+
+test('migrar: csv con ; comillas, saltos y BOM, y tareas.md; no migra dos veces', () => {
+  assert.deepEqual(parseCsv('a;"b;c";"d ""e"""\n'), [['a', 'b;c', 'd "e"']])
+  const linea = (o: Record<string, string>) => CAMPOS.map((c) => o[c] ?? '').map((v) => (/[;"\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v)).join(';')
+  const dir = carpetaAntigua(
+    linea({ orden: '1', estado: 'Postulado', empresa: 'A', cargo: 'x', notas: 'n; "c"\nl2' }) + '\n' + linea({ orden: '2', estado: 'Entrevista', empresa: 'B', cargo: 'y' }) + '\n',
+    '# T\r\n\r\n- [ ] uno\r\n- [x] dos\r\n'
+  )
+  const db = abrir(':memory:')
+  assert.deepEqual(migrar(db, dir), { postulaciones: 2, pendientes: 2 })
+  assert.deepEqual(leer(db).map((f) => [f.orden, f.empresa]), [['1', 'B'], ['2', 'A']])
+  assert.equal(leer(db)[1].notas, 'n; "c"\nl2')
+  assert.deepEqual(leerPendientes(db).map((t) => [t.texto, t.hecha]), [['uno', false], ['dos', true]])
+  assert.throws(() => migrar(db, dir), /dos veces/)
+})
+
+test('migrar rechaza una fila con ; sin escapar en vez de perder datos', () => {
+  const dir = carpetaAntigua('1;Alta;Postulado;X;Y;;;;;paso; con punto y coma;;;\n')
+  const db = abrir(':memory:')
+  assert.throws(() => migrar(db, dir), /sin comillas/)
+  assert.equal(leer(db).length, 0) // la transacción no deja nada a medias
 })
 
 test('gmail: empresa por remitente o asunto, sin falsos positivos genéricos', () => {
