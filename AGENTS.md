@@ -1,0 +1,36 @@
+# AGENTS.md
+
+otterjobs es la app de escritorio (Electron + React) para la búsqueda de trabajo: tablero de postulaciones, tareas con vencimiento, bandeja de Gmail y botones que abren Claude Code. **Los datos no viven aquí**: viven en el carpeta de datos (`postulaciones/tracker.csv`, `tareas.md`, `fuentes/gmail/inbox.json`), que la app lee y escribe. Las reglas sobre esos datos (qué se puede publicar, qué no se inventa) están en el `AGENTS.md` de la carpeta de datos.
+
+## Cómo se trabaja
+
+- **Ramas**: `main` es la rama por defecto y la de las releases, y se desarrolla en `dev`. Cada fase va en `fase/N-nombre` desde `dev` y lo demás en `feat|fix|refactor|chore|docs/<nombre>`. Todo entra a `dev` por PR. **Una release es un PR de `dev` a `main`**: al fusionarlo, GitHub Actions publica `0.FASE.N` en el canal estable de Velopack.
+- **Versión**: `VERSION` dice solo la fase (`0.1`) y se edita al abrir una. N sube con cada PR fusionado en `dev` (`scripts/version.ps1`), y cada push a `dev` publica la prerelease `0.FASE.N-dev` (canal `dev`).
+- **Commits** pequeños, en Conventional Commits y en español (`feat(tablero): …`), con `Refs #n` de la tarea.
+- **Novedades**: cada release agrega su entrada arriba en `CHANGELOG.md` («## 0.FASE.N · Título», ramas, «### Nuevo», «### Arreglos»).
+
+## Reglas
+
+- Claude se usa a través del Claude Code interactivo del usuario (`wt.exe … claude "<pedido>"`), **nunca con `claude -p` ni con la API de Anthropic**.
+- Lo determinista va en `src/core` y lo usan igual la app y la CLI: Claude decide y los scripts repiten.
+- El tracker se escribe solo con `src/core/tracker.ts` (valida, ordena, escapa los `;`, conserva el BOM y escribe atómico). Nunca con `sed` ni a mano.
+- Gmail es solo lectura (IMAP con contraseña de aplicación). La app no envía correos.
+- Credenciales y datos personales nunca en el repo ni en logs: van en `~/.otterjobs/`.
+- Código mínimo: sin abstracciones de una sola implementación ni andamiaje "para después".
+
+## Comandos
+
+| Para | Comando |
+|---|---|
+| App en caliente | `pnpm dev` |
+| App compilada | `pnpm build && pnpm start` |
+| Pruebas / tipos | `pnpm test` / `pnpm typecheck` |
+| CLI (para Claude Code y la terminal) | `pnpm otterjobs ver\|stats\|tareas\|set\|add\|gmail\|datos` |
+| Versión actual | `./scripts/version.ps1` |
+| Instalador local | `./scripts/empaquetar.ps1` → `artefactos/paquetes` con `0.FASE.N-local.M` |
+
+## Configuración
+
+- `~/.otterjobs/config.json`: `{ "datos": "<carpeta de datos>" }`. Se fija con `pnpm otterjobs datos <carpeta>` o desde la app.
+- `~/.otterjobs/.env`: `GMAIL_USER` y `GMAIL_APP_PASSWORD` (contraseña de aplicación de Google).
+- `OTTERJOBS_DATOS` y `OTTERJOBS_HOME` los reemplazan (útil en pruebas).

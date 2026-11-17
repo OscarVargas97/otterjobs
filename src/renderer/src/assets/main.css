@@ -1,0 +1,60 @@
+/* Tokens con los mismos nombres que ottercode (shadcn), recortados a lo que usa otterjobs. */
+@import 'tailwindcss';
+
+@font-face {
+  font-family: 'Geist';
+  src: url('./fonts/Geist-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@theme {
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: calc(1 / 0.6875);
+  --font-sans: 'Geist', system-ui, sans-serif;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+}
+
+:root {
+  --background: oklch(0.16 0 0);
+  --foreground: oklch(0.93 0 0);
+  --card: oklch(0.21 0 0);
+  --primary: oklch(0.7 0.14 250);
+  --primary-foreground: oklch(0.16 0 0);
+  --muted: oklch(0.27 0 0);
+  --muted-foreground: oklch(0.68 0 0);
+  --accent: oklch(0.26 0 0);
+  --destructive: oklch(0.65 0.2 25);
+  --border: oklch(0.3 0 0);
+  --sidebar: oklch(0.18 0 0);
+  --sidebar-accent: oklch(0.25 0 0);
+  --ok: oklch(0.75 0.15 150);
+  --warn: oklch(0.8 0.15 80);
+}
+
+html, body, #root { height: 100%; }
+body { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--font-sans); font-size: 14px; }
+button { cursor: pointer; }
+a { cursor: pointer; }
+
+@layer components {
+  .campo {
+    @apply w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary;
+  }
+}

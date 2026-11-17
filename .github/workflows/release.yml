@@ -1,0 +1,49 @@
+# Publica una release estable con Velopack al fusionar en main: 0.FASE.N, con la N de la punta de dev que se
+# fusiona. Canal estable de Velopack.
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Dependencias
+        run: pnpm install --frozen-lockfile
+
+      # La N de la punta de dev que se fusionó: la misma de su última prerelease.
+      - name: Versión (0.FASE.N)
+        id: version
+        shell: pwsh
+        run: |
+          $rev = if (git rev-parse -q --verify HEAD^2) { 'HEAD^2' } else { 'HEAD' }
+          "valor=$(./scripts/version.ps1 -Rev $rev)" >> $env:GITHUB_OUTPUT
+
+      - name: Pruebas
+        run: pnpm test
+
+      - name: Instalar vpk
+        run: dotnet tool install -g vpk
+
+      - name: Empaquetar
+        shell: pwsh
+        run: ./scripts/empaquetar.ps1 -Version ${{ steps.version.outputs.valor }}
+
+      - name: Subir a GitHub Releases
+        run: vpk upload github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }} --outputDir artefactos/paquetes --publish --releaseName "otterjobs ${{ steps.version.outputs.valor }}" --tag v${{ steps.version.outputs.valor }}
