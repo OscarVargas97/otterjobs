@@ -116,10 +116,10 @@ test('pedido a Claude sin ; ni comillas', () => {
 
 test('nuevo: crea la carpeta desde la plantilla, con la ruta de la CLI y la base vacía', () => {
   const dir = join(mkdtempSync(join(tmpdir(), 'oj-')), 'datos')
-  crearDatos(dir)
+  crearDatos(dir, join(import.meta.dirname, '..', '..', 'plantilla'), 'pnpm otterjobs')
   const agents = readFileSync(join(dir, 'AGENTS.md'), 'utf8')
-  assert.ok(!agents.includes('{{OTTERJOBS}}') && agents.includes('otterjobs set|add'))
+  assert.ok(agents.includes('**CLI de otterjobs:** `pnpm otterjobs`'))
   assert.ok(existsSync(join(dir, '.claude', 'commands', 'perfil.md')) && existsSync(join(dir, 'fuentes')))
   assert.equal(leer(abrir(join(dir, 'otterjobs.db'))).length, 0)
-  assert.throws(() => crearDatos(dir), /no está vacía/)
+  assert.throws(() => crearDatos(dir, '', ''), /no está vacía/)
 })

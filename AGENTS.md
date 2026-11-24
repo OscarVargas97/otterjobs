@@ -1,6 +1,6 @@
 # AGENTS.md
 
-otterjobs es la app de escritorio (Electron + React) para la búsqueda de trabajo: tablero de postulaciones, tareas con vencimiento, bandeja de Gmail y botones que abren Claude Code. **Los datos no se versionan aquí** (`plantilla/` es el esqueleto vacío que copia `otterjobs nuevo`, sin datos de nadie): viven en su propia carpeta y repo privado (`datos/`, ignorada por este repo): `otterjobs.db` (postulaciones, historial de cambios y tareas), una carpeta por postulación y `fuentes/gmail/inbox.json` (no versionada). Las reglas sobre esos datos (qué se puede publicar, qué no se inventa) están en el `AGENTS.md` de la carpeta de datos.
+otterjobs es la app de escritorio (Electron + React) para la búsqueda de trabajo: tablero de postulaciones, tareas con vencimiento, bandeja de Gmail y botones que abren Claude Code. **Los datos no se versionan aquí** (`plantilla/` es la carpeta de datos vacía que copia `otterjobs nuevo`, sin datos de nadie; entra al instalador para que la app pueda crearla más adelante con `crearDatos`): viven en su propia carpeta y repo privado (`datos/`, ignorada por este repo): `otterjobs.db` (postulaciones, historial de cambios y tareas), una carpeta por postulación y `fuentes/gmail/inbox.json` (no versionada). Las reglas sobre esos datos (qué se puede publicar, qué no se inventa) están en el `AGENTS.md` de la carpeta de datos.
 
 ## Cómo se trabaja
 

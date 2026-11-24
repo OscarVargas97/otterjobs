@@ -1,57 +1,30 @@
 # AGENTS.md
 
-Esta carpeta es la fuente de verdad de mi perfil laboral. Antes de redactar cualquier cosa sobre mí, lee `perfil/perfil.md` (los hechos) y `perfil/marca.md` (el enfoque). Si `perfil/perfil.md` todavía es la plantilla vacía, propón correr `/perfil` antes de cualquier otra cosa.
+Esta carpeta es la fuente de verdad de mi perfil laboral. Antes de redactar algo sobre mí, lee `perfil/perfil.md` (los hechos) y, si existe, `perfil/marca.md` (el enfoque). Si `perfil/perfil.md` sigue vacío, propón `/perfil` antes que nada.
+
+**CLI de otterjobs:** `{{CLI}}` (en los comandos aparece como `otterjobs`).
 
 ## Reglas
 
-1. **No inventes.** Todo logro, cifra, cargo o fecha sale de `perfil/perfil.md`. Si falta un dato, pregunta o déjalo fuera. Nunca lo supongas.
-2. **Datos sensibles.** No incluyas, ni aquí ni en ningún documento derivado, información interna de empleadores: vulnerabilidades, nombres de clientes o colegas, identificadores internos, secretos ni arquitectura de red. Generaliza: "endurecí la seguridad", no "corregí la vulnerabilidad X".
-3. **Cifras de negocio de exempleadores:** en todo lo público (CV, LinkedIn, portales, posts) van en forma relativa ("capacidad ×10"), nunca en volúmenes absolutos. Las cifras absolutas quedan en `perfil/perfil.md` y en `fuentes/` para las entrevistas.
-4. **Nada sale sin visto bueno.** No publiques, envíes ni subas contenido (LinkedIn, portales, correos, artifacts) sin aprobación explícita en el chat.
-5. **`fuentes/` es solo de lectura y no se versiona.** No copies su contenido literal a archivos versionados.
-6. **Orden de actualización:** primero `perfil/perfil.md`, después `perfil/marca.md`, y al final los derivados.
-7. **Postulaciones:** cada oferta nueva, postulación o cambio de estado se registra en el tracker (`otterjobs.db`) en el mismo momento, **solo** con la app otterjobs o con `pnpm -s --dir {{OTTERJOBS}} otterjobs set|add`. Nunca abras `otterjobs.db` con otra herramienta. El próximo paso va en `proximo_paso`, en una sola línea, y su fecha límite en `vence` (AAAA-MM-DD). Las tareas que no son de una oferta se agregan con `otterjobs pendiente "texto"` y se cierran con `otterjobs hecha ID`.
+1. **No inventes.** Todo logro, cifra, cargo o fecha sale de `perfil/perfil.md`. Si falta un dato, pregunta o déjalo fuera.
+2. **Datos sensibles.** Nada interno de empleadores en lo que escribas: vulnerabilidades, clientes, colegas, identificadores, secretos ni arquitectura. Generaliza.
+3. **Cifras de negocio de exempleadores:** en lo público (CV, perfiles, posts) van en forma relativa ("capacidad ×10"). Las absolutas quedan en `perfil/perfil.md` para las entrevistas.
+4. **Nada sale sin visto bueno.** No publiques, envíes ni subas nada sin aprobación explícita en el chat.
+5. **`fuentes/` es solo de lectura y no se versiona.** No copies su contenido literal a otros archivos.
+6. **Orden:** primero `perfil/perfil.md`, después `perfil/marca.md` y al final los derivados (CV, perfiles, posts).
+7. **Tracker:** cada oferta, postulación o cambio de estado se registra en el momento con `otterjobs add|set` (o en la app). Nunca abras `otterjobs.db` con otra herramienta. El próximo paso va en `proximo_paso` (una línea) y su fecha en `vence` (AAAA-MM-DD). Las tareas sueltas, con `otterjobs pendiente "texto"` y `otterjobs hecha ID`.
 
 ### Reglas propias
 
-<!-- Lo que solo aplica a esta persona: temas que no se mencionan, cómo contar una salida, proyectos que no son suyos, etc. /perfil las propone. -->
+<!-- Lo que solo aplica a esta persona (temas que no se mencionan, proyectos que no son suyos). /perfil las propone. -->
 
-## Estructura
+## Dónde va cada cosa
 
-| Carpeta | Qué hay |
-|---|---|
-| `perfil/` | `perfil.md` (hechos), `marca.md` (enfoque), `perfiles.md` (LinkedIn y portales), `criterios-revision.md` |
-| `cv/` | CV base (`cv.html`, `cv-en.html`) y sus PDF |
-| `postulaciones/AAAA-MM-DD-empresa-rol/` | Todo lo de una oferta: `ficha.md`, la variante del CV y `entrevistas/`. La columna `ficha` del tracker apunta aquí |
-| `mercado/` | Reportes de mercado y barridos de oportunidades |
-| `linkedin/` | Voz, ideas y `posts/AAAA-MM-DD-slug/` |
-| `otterjobs.db` | Tracker, historial y tareas. Se versiona, pero solo se escribe con otterjobs |
-| `fuentes/` | Material en bruto (CV antiguos, exportación de LinkedIn, chats, notas) y la bandeja de Gmail. No se versiona |
-
-## Sistema
-
-La app **otterjobs** (`{{OTTERJOBS}}`) tiene el tablero, las tareas y la bandeja de Gmail. Su CLI hace lo mismo desde el chat:
-
-- `pnpm -s --dir {{OTTERJOBS}} otterjobs ver|stats|tareas|historial ORDEN`: consultas.
-- `pnpm -s --dir {{OTTERJOBS}} otterjobs set ORDEN campo=valor …` y `add campo=valor …`: los únicos que escriben el tracker.
-- `pnpm -s --dir {{OTTERJOBS}} otterjobs gmail [--dias N | --pendientes | --revisado]`: lee Gmail (solo lectura) y deja los correos en `fuentes/gmail/inbox.json`. El criterio lo pones tú con `/correo`.
-
-Comandos: `/perfil` (arma o actualiza el perfil desde `fuentes/`), `/correo` (bandeja → tracker), `/semana` (ritual de LinkedIn).
+`perfil/` (hechos, marca, perfiles públicos, `criterios-revision.md`), `cv/`, `postulaciones/AAAA-MM-DD-empresa-rol/` (ficha, variante del CV, entrevistas; la columna `ficha` del tracker apunta aquí), `linkedin/` (voz, ideas, posts), `fuentes/` (material en bruto y la bandeja de Gmail). Las carpetas se crean cuando hacen falta.
 
 ## Estilo
 
 - Español neutro. Primera persona en el About y en los posts.
-- Evita las frases vacías: "apasionado", "proactivo", "orientado a resultados", "dinámico".
-- Bullets con verbo y sistema o alcance. Cifras solo si están en `perfil/perfil.md`.
-
-## Revisión del CV
-
-Antes de evaluar o editar el CV o los perfiles públicos, lee `perfil/criterios-revision.md` y aplica su checklist. Después de cada evaluación externa, registra el resultado en su §5 y agrega al checklist los criterios nuevos que sean válidos.
-
-## Registro del CV
-
-- **Resumen:** tono neutro y profesional. Años de experiencia, especialidad, sectores y propuesta de valor. Sin eslóganes ni preguntas.
-- **Bullets:** verbo en pasado, qué se hizo, con qué tecnología y con qué resultado, medible si existe.
-- Sin coloquialismos ni justificaciones ("en vez de…", "porque…").
-- Distinguir siempre **"diseñé/implementé"** (propio) de **"participé en"** (en equipo).
-- La marca personal se expresa en qué se destaca y en qué orden, no en frases de marca. Esas van en LinkedIn y en los posts.
+- Sin frases vacías ("apasionado", "proactivo", "orientado a resultados").
+- **CV:** resumen neutro (años, especialidad, sectores, propuesta de valor). Bullets con verbo en pasado, qué, con qué y qué resultado. Distinguir "diseñé/implementé" de "participé en". Sin coloquialismos ni justificaciones. Antes de editarlo, aplica `perfil/criterios-revision.md`.
+- **Posts:** suenan a la persona, no a una IA. Sin tríadas de adjetivos, "no es solo X, es Y", emojis decorativos ni cierres motivacionales. Lo que la persona corrige se anota en `linkedin/voz.md`.

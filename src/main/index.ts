@@ -9,7 +9,7 @@ import { usar, type Db } from '../core/db.ts'
 import { agregarPendiente, leerPendientes, marcarPendiente } from '../core/pendientes.ts'
 import { actualizar, agregar, historial, isoHoy, leer, tareas } from '../core/tracker.ts'
 
-// Velopack: instalar, actualizar y desinstalar corren aquí antes que nada .
+// Velopack: instalar, actualizar y desinstalar corren aquí antes que nada.
 VelopackApp.build().run()
 
 let win: BrowserWindow | null = null

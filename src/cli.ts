@@ -4,6 +4,7 @@
 //   pnpm otterjobs pendiente "texto" | hecha ID
 //   pnpm otterjobs gmail [--dias 7] | gmail --pendientes | gmail --revisado
 //   pnpm otterjobs nuevo <carpeta> | datos <carpeta> | migrar
+import { join, resolve } from 'node:path'
 import { carpetaDatos, credencialesGmail, guardarCarpetaDatos, RUTA_ENV, rutas } from './core/config.ts'
 import { usar } from './core/db.ts'
 import { escanear, leerInbox, marcarRevisado } from './core/gmail.ts'
@@ -32,7 +33,8 @@ async function main(a: string[]) {
   const [cmd, ...resto] = a
   if (cmd === 'nuevo') {
     if (!resto[0]) throw new Error('uso: nuevo <carpeta>')
-    crearDatos(resto[0])
+    const raiz = resolve(import.meta.dirname, '..')
+    crearDatos(resto[0], join(raiz, 'plantilla'), `pnpm -s --dir ${raiz.replace(/\\/g, '/')} otterjobs`)
     guardarCarpetaDatos(resto[0])
     return console.log(`Carpeta de datos creada en ${resto[0]}. Deja tu material en fuentes/, abre Claude Code ahí y escribe /perfil.`)
   }
