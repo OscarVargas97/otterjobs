@@ -1,6 +1,6 @@
 # AGENTS.md
 
-otterjobs es la app de escritorio (Electron + React) para la búsqueda de trabajo: tablero de postulaciones, tareas con vencimiento, bandeja de Gmail y botones que abren Claude Code. **Los datos no se versionan aquí**: viven en su propia carpeta y repo privado (`datos/`, ignorada por este repo): `otterjobs.db` (postulaciones, historial de cambios y tareas), una carpeta por postulación y `fuentes/gmail/inbox.json` (no versionada). Las reglas sobre esos datos (qué se puede publicar, qué no se inventa) están en el `AGENTS.md` de la carpeta de datos.
+otterjobs es la app de escritorio (Electron + React) para la búsqueda de trabajo: tablero de postulaciones, tareas con vencimiento, bandeja de Gmail y botones que abren Claude Code. **Los datos no se versionan aquí** (`plantilla/` es el esqueleto vacío que copia `otterjobs nuevo`, sin datos de nadie): viven en su propia carpeta y repo privado (`datos/`, ignorada por este repo): `otterjobs.db` (postulaciones, historial de cambios y tareas), una carpeta por postulación y `fuentes/gmail/inbox.json` (no versionada). Las reglas sobre esos datos (qué se puede publicar, qué no se inventa) están en el `AGENTS.md` de la carpeta de datos.
 
 ## Cómo se trabaja
 
@@ -15,7 +15,7 @@ otterjobs es la app de escritorio (Electron + React) para la búsqueda de trabaj
 - Lo determinista va en `src/core` y lo usan igual la app y la CLI: Claude decide y los scripts repiten.
 - `otterjobs.db` (SQLite, `node:sqlite`, sin dependencias) se escribe solo con `src/core/tracker.ts` y `pendientes.ts`: validan, ordenan y registran cada cambio en `eventos`, dentro de una transacción. Las columnas en SQL salen solo de `CAMPOS`. La base se abre, se usa y se cierra (`usar`) para que nunca quede bloqueada entre la app y la CLI.
 - Gmail es solo lectura (IMAP con contraseña de aplicación). La app no envía correos.
-- Credenciales y datos personales nunca en el repo ni en logs: van en `~/.otterjobs/`.
+- Credenciales y datos personales nunca en el repo ni en logs (ni en `plantilla/` ni en las pruebas): van en `~/.otterjobs/` o en la carpeta de datos.
 - Código mínimo: sin abstracciones de una sola implementación ni andamiaje "para después".
 
 ## Comandos
@@ -25,7 +25,7 @@ otterjobs es la app de escritorio (Electron + React) para la búsqueda de trabaj
 | App en caliente | `pnpm dev` |
 | App compilada | `pnpm build && pnpm start` |
 | Pruebas / tipos | `pnpm test` / `pnpm typecheck` |
-| CLI (para Claude Code y la terminal) | `pnpm otterjobs ver\|stats\|tareas\|set\|add\|gmail\|datos` |
+| CLI (para Claude Code y la terminal) | `pnpm otterjobs ver\|stats\|tareas\|set\|add\|gmail\|nuevo\|datos` |
 | Versión actual | `./scripts/version.ps1` |
 | Instalador local | `./scripts/empaquetar.ps1` → `artefactos/paquetes` con `0.FASE.N-local.M` |
 

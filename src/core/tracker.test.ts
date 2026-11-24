@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { abrir } from './db.ts'
@@ -9,6 +9,7 @@ import { agregarPendiente, leerPendientes, marcarPendiente } from './pendientes.
 import { actualizar, agregar, CAMPOS, historial, insertar, leer, tareas, type Campo } from './tracker.ts'
 import { clavesEmpresa, empresaDe, esReclutamiento } from './gmail.ts'
 import { armarPedido } from './claude.ts'
+import { crearDatos } from './plantilla.ts'
 
 const vacia = () => Object.fromEntries(CAMPOS.map((c) => [c, ''])) as Record<Campo, string>
 function base(filas: Partial<Record<Campo, string>>[]) {
@@ -111,4 +112,14 @@ test('pedido a Claude sin ; ni comillas', () => {
   const p = armarPedido('preparar', { orden: '2', empresa: 'A; "B"', cargo: 'Dev' })
   assert.ok(!p.includes(';') && !p.includes('"'))
   assert.equal(armarPedido('correo'), '/correo')
+})
+
+test('nuevo: crea la carpeta desde la plantilla, con la ruta de la CLI y la base vacía', () => {
+  const dir = join(mkdtempSync(join(tmpdir(), 'oj-')), 'datos')
+  crearDatos(dir)
+  const agents = readFileSync(join(dir, 'AGENTS.md'), 'utf8')
+  assert.ok(!agents.includes('{{OTTERJOBS}}') && agents.includes('otterjobs set|add'))
+  assert.ok(existsSync(join(dir, '.claude', 'commands', 'perfil.md')) && existsSync(join(dir, 'fuentes')))
+  assert.equal(leer(abrir(join(dir, 'otterjobs.db'))).length, 0)
+  assert.throws(() => crearDatos(dir), /no está vacía/)
 })

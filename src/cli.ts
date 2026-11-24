@@ -3,15 +3,16 @@
 //   pnpm otterjobs set ORDEN campo=valor ... | add empresa=X cargo=Y ...
 //   pnpm otterjobs pendiente "texto" | hecha ID
 //   pnpm otterjobs gmail [--dias 7] | gmail --pendientes | gmail --revisado
-//   pnpm otterjobs datos <carpeta> | migrar
+//   pnpm otterjobs nuevo <carpeta> | datos <carpeta> | migrar
 import { carpetaDatos, credencialesGmail, guardarCarpetaDatos, RUTA_ENV, rutas } from './core/config.ts'
 import { usar } from './core/db.ts'
 import { escanear, leerInbox, marcarRevisado } from './core/gmail.ts'
 import { migrar } from './core/migrar.ts'
+import { crearDatos } from './core/plantilla.ts'
 import { agregarPendiente, leerPendientes, marcarPendiente } from './core/pendientes.ts'
 import { actualizar, agregar, ESTADOS, historial, isoHoy, leer, tareas, type Fila } from './core/tracker.ts'
 
-const ayuda = `uso: otterjobs ver [--estado X] [--q texto] | stats | tareas | historial ORDEN | set ORDEN campo=valor ... | add campo=valor ... | pendiente "texto" | hecha ID | gmail [--dias N | --pendientes | --revisado] | datos <carpeta> | migrar`
+const ayuda = `uso: otterjobs ver [--estado X] [--q texto] | stats | tareas | historial ORDEN | set ORDEN campo=valor ... | add campo=valor ... | pendiente "texto" | hecha ID | gmail [--dias N | --pendientes | --revisado] | nuevo <carpeta> | datos <carpeta> | migrar`
 const corto = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1) + '…').padEnd(n)
 const opcion = (a: string[], k: string) => (a.includes(k) ? a[a.indexOf(k) + 1] : undefined)
 
@@ -29,6 +30,12 @@ const linea = (f: Fila) => `${f.orden.padStart(3)} ${corto(f.prob, 10)} ${corto(
 
 async function main(a: string[]) {
   const [cmd, ...resto] = a
+  if (cmd === 'nuevo') {
+    if (!resto[0]) throw new Error('uso: nuevo <carpeta>')
+    crearDatos(resto[0])
+    guardarCarpetaDatos(resto[0])
+    return console.log(`Carpeta de datos creada en ${resto[0]}. Deja tu material en fuentes/, abre Claude Code ahí y escribe /perfil.`)
+  }
   if (cmd === 'datos') {
     guardarCarpetaDatos(resto[0])
     return console.log(`Datos: ${resto[0]}`)
