@@ -4,6 +4,8 @@ App de escritorio para la búsqueda de trabajo: tablero de postulaciones, tareas
 
 ## Levantarla
 
+Requisitos: Node 24 o superior (usa `node:sqlite` y corre TypeScript sin compilar), pnpm, [Claude Code](https://claude.com/claude-code) y, en Windows, Windows Terminal (los botones abren Claude ahí).
+
 ```sh
 pnpm install
 pnpm otterjobs nuevo <carpeta>   # una vez: crea tu carpeta de datos desde plantilla/
