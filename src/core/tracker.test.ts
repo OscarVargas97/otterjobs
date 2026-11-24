@@ -8,7 +8,8 @@ import { migrar, parseCsv } from './migrar.ts'
 import { agregarPendiente, leerPendientes, marcarPendiente } from './pendientes.ts'
 import { actualizar, agregar, CAMPOS, historial, insertar, leer, tareas, type Campo } from './tracker.ts'
 import { clavesEmpresa, empresaDe, esReclutamiento } from './gmail.ts'
-import { armarPedido } from './claude.ts'
+import { armarPedido, PEDIDOS } from './claude.ts'
+import { estadoPerfil } from './perfil.ts'
 import { crearDatos } from './plantilla.ts'
 
 const vacia = () => Object.fromEntries(CAMPOS.map((c) => [c, ''])) as Record<Campo, string>
@@ -112,6 +113,7 @@ test('pedido a Claude sin ; ni comillas', () => {
   const p = armarPedido('preparar', { orden: '2', empresa: 'A; "B"', cargo: 'Dev' })
   assert.ok(!p.includes(';') && !p.includes('"'))
   assert.equal(armarPedido('correo'), '/correo')
+  assert.equal(armarPedido('postular', { orden: '7', empresa: 'Pudu Labs', cargo: 'Dev' }), '/postular #7 Pudu Labs, Dev')
 })
 
 test('nuevo: crea la carpeta desde la plantilla, con la ruta de la CLI y la base vacía', () => {
@@ -122,4 +124,24 @@ test('nuevo: crea la carpeta desde la plantilla, con la ruta de la CLI y la base
   assert.ok(existsSync(join(dir, '.claude', 'commands', 'perfil.md')) && existsSync(join(dir, 'fuentes')))
   assert.equal(leer(abrir(join(dir, 'otterjobs.db'))).length, 0)
   assert.throws(() => crearDatos(dir, '', ''), /no está vacía/)
+})
+
+test('cada pedido de la app es un comando de la plantilla', () => {
+  for (const c of Object.values(PEDIDOS)) assert.ok(existsSync(join(import.meta.dirname, '..', '..', 'plantilla', '.claude', 'commands', `${c.slice(1)}.md`)), c)
+})
+
+test('perfil: las etapas siguen las marcas pendiente de la plantilla', () => {
+  const dir = join(mkdtempSync(join(tmpdir(), 'oj-')), 'datos')
+  crearDatos(dir, join(import.meta.dirname, '..', '..', 'plantilla'), 'pnpm otterjobs')
+  let e = estadoPerfil(dir)
+  assert.equal(e.fuentes, 0)
+  assert.ok(e.etapas.every((x) => !x.listo))
+  assert.equal(e.siguiente, 'hechos')
+  const perfil = join(dir, 'perfil', 'perfil.md')
+  writeFileSync(perfil, readFileSync(perfil, 'utf8').replace(/<!-- pendiente:hechos[^>]*-->/, '') + '- ¿Jornada completa en 2023?\n')
+  writeFileSync(join(dir, 'fuentes', 'cv.pdf'), '')
+  e = estadoPerfil(dir)
+  assert.equal(e.fuentes, 1)
+  assert.equal(e.siguiente, 'preferencias')
+  assert.deepEqual(e.porConfirmar, ['¿Jornada completa en 2023?'])
 })

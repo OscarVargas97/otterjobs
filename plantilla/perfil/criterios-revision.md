@@ -1,8 +1,8 @@
 # Criterios de revisión del CV y los perfiles
 
-Fuente de verdad de **cómo se evalúa** el CV y los perfiles públicos. Cualquier agente que revise o edite estos documentos lee este archivo primero y aplica sus criterios.
+Fuente de verdad de **cómo se evalúa** el CV y los perfiles públicos. Quien revise o edite esos documentos (una persona, un agente o `/revisar`) lee este archivo primero y aplica sus criterios.
 
-Cada evaluación externa (una herramienta, un agente o un reclutador) se registra en §5, y lo nuevo que enseñe se agrega a los criterios.
+Cada evaluación (una herramienta, un agente o un reclutador) se registra en §5, y lo nuevo y válido que enseñe se agrega a §2. Así lo aprendido no depende de una herramienta ni de una suscripción.
 
 Prioridad cuando dos criterios chocan:
 1. Hechos de `perfil.md`.
@@ -12,19 +12,27 @@ Prioridad cuando dos criterios chocan:
 
 ---
 
-## 1. Cómo se postula (contexto del mercado)
+## 1. Cómo se postula en mi mercado
 
-<!-- Ajustar al país. Ejemplo para Chile: -->
+<!-- pendiente:mercado — /perfil mercado lo investiga (con fuente y fecha) y quita esta marca. -->
 
 | Canal | Cómo filtra | Qué implica |
 |---|---|---|
-| **GetOnBoard** | Etiquetas de tecnologías y habilidades; luego ubicación, salario y nivel; reordena según el historial en la plataforma. | Las etiquetas coinciden con las Competencias del CV. Salario, nivel y ubicación precisos. Postular con criterio. |
-| **LinkedIn** | Búsqueda por cargo, ubicación, empresa y aptitudes, con búsqueda booleana. Easy Apply agrega preguntas de filtro. | Titular con el cargo objetivo y 3 a 5 habilidades. Aptitudes con la redacción de las ofertas, las 3 principales fijadas. |
-| **ATS de la empresa** | Leen el texto del PDF, reconocen secciones y buscan palabras clave y el título del cargo. | Formato ATS (§2.A) y palabras clave dentro de cada cargo (§2.C). |
+| **LinkedIn** | Búsqueda por cargo, ubicación, empresa y aptitudes, con búsqueda booleana. Easy Apply agrega preguntas de filtro (años, sueldo, certificaciones). | Titular con el cargo objetivo y 3 a 5 habilidades. Aptitudes con la redacción de las ofertas, las 3 principales fijadas. Respuestas listas para las preguntas de filtro. |
+| **ATS de la empresa** | Leen el texto del PDF, reconocen secciones y buscan palabras clave y el título del cargo. Algunos calculan años por habilidad según el cargo donde aparece. | Formato ATS (§2.A) y palabras clave dentro de cada cargo (§2.C). |
 
-**Consistencia entre canales:** cargo, fechas, jornada y tecnologías dicen lo mismo en el CV y en cada portal.
+<!-- Agrega los portales de tu profesión y país (bolsas sectoriales, empleo público, portales de nicho) y cómo filtra cada uno. -->
 
-**Idioma:** CV en español para ofertas locales y en inglés para las remotas. Las herramientas genéricas solo evalúan bien en inglés.
+**Bandas salariales** (fuente y fecha de consulta):
+
+| Cargo y nivel | Rango | Fuente |
+|---|---|---|
+
+**Volumen de ofertas por cargo:**
+
+**Lectura:** qué cargo da volumen, cuál paga más, cuál va como CV base y cuáles como variantes.
+
+**Consistencia entre canales:** cargo, fechas, jornada y habilidades dicen lo mismo en el CV y en cada portal.
 
 ---
 
@@ -41,7 +49,7 @@ Cada punto lleva su origen entre corchetes. Un revisor reporta cada punto como �
 - [ ] PDF con texto real y nombre de archivo simple. [Jobscan]
 - [ ] Prueba de texto plano: extraer el texto del PDF y revisar orden, fechas, contacto y tildes. [headhunter]
 - [ ] Ningún cargo cortado por el salto de página (`break-inside: avoid`). [headhunter]
-- [ ] Versiones ES y EN equivalentes. [headhunter]
+- [ ] Si postulas en dos idiomas, las dos versiones son equivalentes. [headhunter]
 - [ ] El contacto en el cuerpo, no en el encabezado de página. [Jobscan]
 
 ### B. Contenido y redacción
@@ -53,12 +61,12 @@ Cada punto lleva su origen entre corchetes. Un revisor reporta cada punto como �
 - [ ] Distinguir *diseñé/implementé* (propio) de *participé* (en equipo). [AGENTS.md]
 - [ ] Sin coloquialismos, justificaciones, frases de marca ni clichés. [AGENTS.md]
 - [ ] Sin pronombres personales en el CV en inglés. [Resume Worded]
-- [ ] 1 o 2 páginas, bajo 1.000 palabras. [Jobscan]
+- [ ] 1 o 2 páginas, bajo 1.000 palabras (un CV directivo o académico puede ser más largo si el mercado lo espera). [Jobscan]
 
 ### C. Palabras clave y alineación con la oferta
 - [ ] El título exacto de la oferta en el título del CV o en el resumen. [Jobscan]
-- [ ] Coincidencia de palabras clave de 75 % o más con la oferta. [Jobscan]
-- [ ] El stack dentro de cada cargo, no solo en Competencias. [headhunter]
+- [ ] Coincidencia de palabras clave de 75 % o más con la oferta (se logra con una variante por oferta). [Jobscan]
+- [ ] Las herramientas y habilidades dentro de cada cargo, no solo en Competencias. [headhunter]
 - [ ] Términos literales como se escriben en las ofertas. [headhunter]
 - [ ] En Competencias solo va lo que tiene un caso concreto que contar. [headhunter]
 
@@ -68,11 +76,13 @@ Cada punto lleva su origen entre corchetes. Un revisor reporta cada punto como �
 - [ ] Hay respuestas preparadas para las señales de alerta (§3). [headhunter]
 
 ### E. Marca personal
-- [ ] La marca se ve en qué se destaca y en qué orden. [marca.md]
+- [ ] La marca se ve en qué se destaca y en qué orden, no en adjetivos. [marca.md]
 
 ---
 
 ## 3. Señales de alerta y su respuesta
+
+<!-- pendiente:alertas — /perfil alertas lee perfil.md como un reclutador escéptico, tú eliges cada respuesta, y quita esta marca. -->
 
 | Señal | Respuesta preparada |
 |---|---|
@@ -81,8 +91,8 @@ Cada punto lleva su origen entre corchetes. Un revisor reporta cada punto como �
 
 ## 4. Cómo hacer una evaluación nueva
 
-1. Generar una copia de prueba sin teléfono ni correo en una carpeta temporal. Nunca subir la versión con contacto.
-2. Usar la versión en inglés para las herramientas en inglés.
+1. Generar una copia de prueba sin teléfono ni correo en una carpeta temporal. Nunca subir a una herramienta la versión con contacto.
+2. Usar la versión en inglés para las herramientas en inglés; la del idioma local, para el análisis y la comparación con ofertas reales.
 3. Registrar el resultado en §5: fecha, herramienta, versión, puntaje, hallazgos y estado.
 4. Convertir cada hallazgo nuevo y válido en un punto de §2, con su origen.
 5. Descartar lo que choque con §1 o con las decisiones de la persona, y anotar por qué.
@@ -90,6 +100,8 @@ Cada punto lleva su origen entre corchetes. Un revisor reporta cada punto como �
 ---
 
 ## 5. Registro de evaluaciones
+
+<!-- pendiente:revision — /revisar quita esta marca al registrar la primera evaluación. -->
 
 | Fecha | Herramienta | Versión | Puntaje | Hallazgos | Estado |
 |---|---|---|---|---|---|

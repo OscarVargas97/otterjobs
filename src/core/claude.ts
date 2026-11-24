@@ -3,19 +3,23 @@
 import { spawn } from 'node:child_process'
 import type { Fila } from './tracker.ts'
 
+// Cada pedido es un comando de plantilla/.claude/commands: el método vive en la carpeta de datos, no aquí.
 export const PEDIDOS = {
-  preparar: 'Prepara la entrevista',
-  mensaje: 'Redacta el mensaje que corresponde según el próximo paso y déjalo en el portapapeles (no lo envíes)',
-  evaluar: 'Evalúa esta oferta contra perfil.md: calce, brechas, sueldo y si vale la pena postular',
-  postular: 'Prepara la postulación: variante de CV, ficha y respuestas',
-  correo: '/correo'
+  preparar: '/entrevista',
+  mensaje: '/mensaje',
+  evaluar: '/evaluar',
+  postular: '/postular',
+  correo: '/correo',
+  perfil: '/perfil',
+  buscar: '/buscar',
+  revisar: '/revisar'
 } as const
 export type Pedido = keyof typeof PEDIDOS
 
 /** El texto que recibe Claude. Sin `;` porque Windows Terminal lo usa para separar comandos. */
 export function armarPedido(pedido: Pedido, fila?: Pick<Fila, 'orden' | 'empresa' | 'cargo'>): string {
-  if (pedido === 'correo' || !fila) return PEDIDOS[pedido]
-  return `${PEDIDOS[pedido]} para la postulación #${fila.orden} del tracker: ${fila.empresa}, ${fila.cargo}.`.replace(/;/g, ',').replace(/[\r\n"]+/g, ' ')
+  if (!fila) return PEDIDOS[pedido]
+  return `${PEDIDOS[pedido]} #${fila.orden} ${fila.empresa}, ${fila.cargo}`.replace(/;/g, ',').replace(/[\r\n"]+/g, ' ')
 }
 
 export function abrirClaude(cwd: string, texto: string): void {

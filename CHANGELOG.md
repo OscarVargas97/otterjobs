@@ -4,6 +4,18 @@ Lo que trae cada versión de otterjobs, lo más nuevo arriba.
 
 ## Sin publicar
 
+`feat/plantilla`
+
+### Nuevo
+- **Tu propio perfil**: `otterjobs nuevo <carpeta>` crea una carpeta de datos vacía desde `plantilla/`, para que cualquier persona arme el suyo desde su material (CV, LinkedIn, chats exportados, notas).
+- **Método por etapas**: `/perfil` arma hechos, preferencias, mercado, marca, señales de alerta, CV, perfiles públicos y la primera revisión, y te pregunta lo que falta. `otterjobs perfil` dice qué etapas están listas y cuál sigue.
+- **Comandos de búsqueda**: `/buscar` (ofertas abiertas por probabilidad), `/evaluar`, `/postular`, `/entrevista` (práctica con puntaje), `/mensaje` (al portapapeles) y `/revisar` (evaluación del CV con registro).
+- **Preferencias en los datos**: piso de renta, correo de envío y tono de los mensajes van en `perfil/preferencias.md`, no en la memoria del asistente.
+- `otterjobs pdf <html>`: el CV a PDF con Edge o Chrome.
+- En la app: «Mi perfil con Claude» y «Buscar ofertas»; los botones de cada postulación abren los comandos nuevos.
+- README con la instalación completa desde cero.
+
+
 `refactor/datos-sqlite`
 
 ### Cambios

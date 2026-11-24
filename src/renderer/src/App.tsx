@@ -74,6 +74,7 @@ export function App() {
         <Nav activo={vista === 'hoy'} onClick={() => setVista('hoy')} icono={<CalendarClock />} texto="Hoy" n={vencidas || undefined} alerta />
         <Nav activo={vista === 'tablero'} onClick={() => setVista('tablero')} icono={<KanbanSquare />} texto="Tablero" n={filas.length} />
         <Nav activo={vista === 'bandeja'} onClick={() => setVista('bandeja')} icono={<Inbox />} texto="Bandeja" n={pendientes || undefined} alerta />
+        <Boton variante="outline" tam="xs" className="mt-4" onClick={() => hacer(() => api.claude('perfil'))}><Bot /> Mi perfil con Claude</Boton>
         <div className="mt-auto space-y-1 px-2 text-2xs text-muted-foreground">
           <div className="truncate" title={s.datos}>{s.datos}</div>
           <div>v{s.version}</div>
@@ -155,6 +156,7 @@ function Tablero({ filas, abrir, hacer }: { filas: Fila[]; abrir: (o: string) =>
     <div className="flex h-full flex-col gap-3">
       <div className="flex gap-2">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar empresa, stack, sueldo…" className="campo flex-1" />
+        <Boton variante="outline" onClick={() => hacer(() => api.claude('buscar'))}><Bot /> Buscar ofertas</Boton>
         <Boton onClick={() => setNueva(true)}><Plus /> Nueva oferta</Boton>
       </div>
       {nueva && <NuevaOferta cerrar={() => setNueva(false)} hacer={hacer} />}
