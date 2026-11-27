@@ -41,5 +41,5 @@ Las de esta persona están en `perfil/preferencias.md` («Reglas propias») y va
 
 - Español neutro. Primera persona en el About y en los posts.
 - Sin frases vacías ("apasionado", "proactivo", "orientado a resultados").
-- **CV:** resumen neutro (años, especialidad, sectores, propuesta de valor). Bullets con verbo en pasado, qué, con qué y qué resultado. Distinguir "diseñé/implementé" de "participé en". Sin coloquialismos ni justificaciones. Antes de editarlo, aplica `perfil/criterios-revision.md`.
+- **CV:** resumen neutro (años, especialidad, sectores, propuesta de valor). Bullets con verbo en pasado, qué, con qué y qué resultado. Distinguir "diseñé/implementé" de "participé en". Sin coloquialismos ni justificaciones. La marca se nota en qué se destaca y en qué orden, no en frases de marca. Antes de editarlo, aplica `perfil/criterios-revision.md`.
 - **Posts:** suenan a la persona, no a una IA. Sin tríadas de adjetivos, "no es solo X, es Y", emojis decorativos ni cierres motivacionales. Lo que la persona corrige se anota en `linkedin/voz.md`.
