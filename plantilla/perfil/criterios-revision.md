@@ -6,7 +6,7 @@ Cada evaluación (una herramienta, un agente o un reclutador) se registra en §5
 
 Prioridad cuando dos criterios chocan:
 1. Hechos de `perfil.md`.
-2. Reglas de `AGENTS.md` y decisiones de la persona.
+2. Reglas del método de otterjobs y decisiones de la persona.
 3. Realidad del mercado donde postula (§1).
 4. Criterios de herramientas genéricas, como Jobscan o Resume Worded.
 
@@ -58,8 +58,8 @@ Cada punto lleva su origen entre corchetes. Un revisor reporta cada punto como �
 - [ ] De 4 a 6 bullets en el rol reciente y de 1 a 3 en los antiguos. [Resumeble]
 - [ ] Ningún verbo de acción repetido más de 2 veces. [Resume Worded]
 - [ ] Al menos 5 resultados medibles en todo el CV. [Jobscan]
-- [ ] Distinguir *diseñé/implementé* (propio) de *participé* (en equipo). [AGENTS.md]
-- [ ] Sin coloquialismos, justificaciones, frases de marca ni clichés. [AGENTS.md]
+- [ ] Distinguir *diseñé/implementé* (propio) de *participé* (en equipo). [método]
+- [ ] Sin coloquialismos, justificaciones, frases de marca ni clichés. [método]
 - [ ] Sin pronombres personales en el CV en inglés. [Resume Worded]
 - [ ] 1 o 2 páginas, bajo 1.000 palabras (un CV directivo o académico puede ser más largo si el mercado lo espera). [Jobscan]
 
@@ -71,7 +71,7 @@ Cada punto lleva su origen entre corchetes. Un revisor reporta cada punto como �
 - [ ] En Competencias solo va lo que tiene un caso concreto que contar. [headhunter]
 
 ### D. Credibilidad
-- [ ] Cada cifra está respaldada en `perfil.md` y se puede explicar en una entrevista. [AGENTS.md]
+- [ ] Cada cifra está respaldada en `perfil.md` y se puede explicar en una entrevista. [método]
 - [ ] Sin afirmaciones fáciles de desmontar. [headhunter]
 - [ ] Hay respuestas preparadas para las señales de alerta (§3). [headhunter]
 

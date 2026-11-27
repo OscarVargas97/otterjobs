@@ -4,8 +4,8 @@ Sistema para buscar trabajo con un perfil y una marca personal que se mantienen 
 
 Hay dos partes que viven separadas:
 
-- **otterjobs** (este repo): la app de escritorio, la CLI y `plantilla/`. No tiene datos de nadie.
-- **Tu carpeta de datos**: tu perfil, tu CV, tus postulaciones (`otterjobs.db`) y tu material en bruto (`fuentes/`). Se crea con `otterjobs nuevo` y conviene versionarla en un repo **privado**.
+- **otterjobs** (este repo): la app de escritorio, la CLI, el método (`metodo/`, un plugin de Claude Code con las reglas y los comandos) y `plantilla/` (los archivos del perfil por llenar). No tiene datos de nadie.
+- **Tu carpeta de datos**: tu perfil, tu CV, tus postulaciones (`otterjobs.db`) y tu material en bruto (`fuentes/`). Solo datos, sin instrucciones: el método se actualiza con otterjobs. Se crea con `otterjobs nuevo` y conviene versionarla en un repo **privado**.
 
 Lo determinista (tracker, historial, estado del perfil, lectura de Gmail) lo hacen scripts. Claude Code se usa solo donde hace falta criterio: leer tu material, preguntarte, redactar y evaluar. Lo que necesita saber para actuar por ti queda en tus datos (`perfil/preferencias.md`), no en la memoria del asistente.
 
@@ -39,7 +39,7 @@ pnpm install
 pnpm otterjobs nuevo C:/ruta/a/mis-datos
 ```
 
-Crea la carpeta desde `plantilla/` (reglas en `AGENTS.md`, plantillas en `perfil/`, comandos de Claude Code en `.claude/commands/`, la base vacía) y la deja como carpeta activa en `~/.otterjobs/config.json`. La carpeta tiene que no existir o estar vacía.
+Crea la carpeta desde `plantilla/` (los archivos de `perfil/` por llenar y la base vacía) y la deja como carpeta activa en `~/.otterjobs/config.json`. La carpeta tiene que no existir o estar vacía.
 
 Para versionarla (recomendado, en un repo **privado**):
 
@@ -58,7 +58,7 @@ git commit -m "inicio"
 
 1. Deja en `mis-datos/fuentes/` todo lo que tengas: CV antiguos, el PDF o la exportación de LinkedIn, certificados, cartas de recomendación, evaluaciones de desempeño, chats exportados (Discord, Slack, WhatsApp), notas sueltas.
 2. Revisa qué falta: `pnpm otterjobs perfil` (desde la carpeta de otterjobs).
-3. Abre Claude Code en tu carpeta de datos (`cd mis-datos` y `claude`) y escribe `/perfil`. Trabaja una etapa por vez, te pregunta lo que falta y escribe en tus archivos solo lo que está respaldado:
+3. Abre Claude Code en tu carpeta de datos con el método de otterjobs (`cd mis-datos` y `claude --plugin-dir C:/ruta/a/otterjobs/metodo`) y escribe `/perfil` (o `/otterjobs:perfil` si otro plugin usa el mismo nombre). Los botones de la app lo abren así solos. Trabaja una etapa por vez, te pregunta lo que falta y escribe en tus archivos solo lo que está respaldado:
 
 | Etapa | Archivo | Qué queda |
 |---|---|---|
@@ -75,7 +75,7 @@ Cada plantilla marca lo pendiente con `<!-- pendiente:ETAPA -->`; la etapa queda
 
 ## 5. Buscar trabajo
 
-Con la app (`pnpm dev`) o desde Claude Code en tu carpeta de datos:
+Con la app (`pnpm dev`) o desde Claude Code en tu carpeta de datos, con el plugin:
 
 | Comando | Qué hace |
 |---|---|

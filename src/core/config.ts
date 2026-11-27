@@ -19,7 +19,7 @@ export function guardarCarpetaDatos(datos: string): void {
   writeFileSync(CONFIG, JSON.stringify({ ...leerConfig(), datos }, null, 2))
 }
 
-/** La carpeta de datos (la carpeta de datos): OTTERJOBS_DATOS o config.json. null si no está configurada. */
+/** La carpeta de datos: OTTERJOBS_DATOS o config.json. null si no está configurada. */
 export function carpetaDatos(): string | null {
   return process.env.OTTERJOBS_DATOS ?? leerConfig().datos ?? null
 }

@@ -2,7 +2,7 @@
 description: Escanea Gmail y actualiza el tracker con lo que llegó
 ---
 
-Usa la CLI de otterjobs que indica `AGENTS.md`.
+Usa la CLI de otterjobs que indica el método.
 
 1. `otterjobs gmail --dias 7` (o los días que se pidan). Si faltan credenciales, explica cómo crear `~/.otterjobs/.env` (README de otterjobs) y detente.
 2. `otterjobs gmail --pendientes` y lee cada correo. Descarta el ruido sin comentarlo.

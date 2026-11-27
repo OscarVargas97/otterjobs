@@ -2,7 +2,7 @@
 description: Arma o actualiza tu perfil por etapas (hechos, preferencias, mercado, marca, alertas, CV, perfiles, revisión) y te pregunta lo que falta
 ---
 
-Sigue `AGENTS.md`; la regla 1 (no inventar) manda. Argumento: una etapa, o nada para seguir con la que toca.
+Sigue el método de otterjobs; la regla 1 (no inventar) manda. Argumento: una etapa, o nada para seguir con la que toca.
 
 **Antes:** corre `otterjobs perfil`. Dice qué etapas están listas, cuál sigue y qué queda «Por confirmar». Sin argumento, trabaja la que sigue.
 
@@ -13,7 +13,7 @@ Sigue `AGENTS.md`; la regla 1 (no inventar) manda. Argumento: una etapa, o nada 
 2. En chats y notas busca lo que la persona hizo, decidió o resolvió, con qué y con qué resultado. Ignora lo de otros.
 3. Escribe solo lo respaldado. Lo dudoso va a «Por confirmar» y lo sensible a «Qué quedó fuera», sin el detalle.
 4. Entrevista: qué fue propio y qué en equipo, cifras (absolutas aquí), vacíos y salidas (cómo contarlas, §8) y al menos 3 historias STAR.
-5. Propón las «Reglas propias» de `AGENTS.md` (temas que no se mencionan, trabajo que no es suyo, cifras que no se publican) y agrégalas si las aprueba.
+5. Propón las «Reglas propias» de `perfil/preferencias.md` (temas que no se mencionan, trabajo que no es suyo, cifras que no se publican) y agrégalas si las aprueba.
 
 ## preferencias → `perfil/preferencias.md`
 Recorre cada campo con la persona. Explícale que esto reemplaza a la memoria del asistente: lo que importa para actuar por ella (piso de renta, desde qué correo postula, cómo deben sonar sus mensajes) queda en sus datos.
@@ -33,7 +33,7 @@ Investiga en la web, citando fuente y fecha: los portales donde se contrata su p
 Lee `perfil.md` como un reclutador escéptico: vacíos, permanencias cortas, cargos superpuestos, título grande para los años, cambio de rubro, sobrecalificación, cifras difíciles de creer, requisitos típicos del cargo que faltan. Para cada señal, la persona elige la respuesta y tú la dejas corta, honesta y sin explicaciones de más. Lo que no quiere mencionar va también a «Reglas propias».
 
 ## cv → `cv/cv.html` y su PDF
-Desde `perfil.md` y `marca.md`, aplicando `criterios-revision.md` §2 y el estilo de `AGENTS.md`. HTML de una columna, imprimible en A4 o carta. El PDF: `otterjobs pdf cv/cv.html` (usa Edge o Chrome). Después, `/revisar`.
+Desde `perfil.md` y `marca.md`, aplicando `criterios-revision.md` §2 y el estilo del método. HTML de una columna, imprimible en A4 o carta. El PDF: `otterjobs pdf cv/cv.html` (usa Edge o Chrome). Después, `/revisar`.
 
 ## perfiles → `perfil/perfiles.md`
 LinkedIn (titular, Acerca de, aptitudes, experiencia) y los demás portales de §1, coherentes con el CV en cargos, fechas y habilidades. La persona los pega a mano.

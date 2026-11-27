@@ -1,18 +1,18 @@
 // «Preguntarle a Claude»: abre Claude Code interactivo (suscripción, no API ni `claude -p`) en la carpeta de datos,
-// donde AGENTS.md ya le da las reglas. La app solo arma el pedido; el criterio y la redacción quedan en Claude.
+// con el plugin metodo/ (reglas y comandos). La app solo arma el pedido; el criterio y la redacción quedan en Claude.
 import { spawn } from 'node:child_process'
 import type { Fila } from './tracker.ts'
 
-// Cada pedido es un comando de plantilla/.claude/commands: el método vive en la carpeta de datos, no aquí.
+// Cada pedido es un comando de metodo/commands: el método vive en el plugin, no en el código ni en los datos.
 export const PEDIDOS = {
-  preparar: '/entrevista',
-  mensaje: '/mensaje',
-  evaluar: '/evaluar',
-  postular: '/postular',
-  correo: '/correo',
-  perfil: '/perfil',
-  buscar: '/buscar',
-  revisar: '/revisar'
+  preparar: '/otterjobs:entrevista',
+  mensaje: '/otterjobs:mensaje',
+  evaluar: '/otterjobs:evaluar',
+  postular: '/otterjobs:postular',
+  correo: '/otterjobs:correo',
+  perfil: '/otterjobs:perfil',
+  buscar: '/otterjobs:buscar',
+  revisar: '/otterjobs:revisar'
 } as const
 export type Pedido = keyof typeof PEDIDOS
 
@@ -22,10 +22,12 @@ export function armarPedido(pedido: Pedido, fila?: Pick<Fila, 'orden' | 'empresa
   return `${PEDIDOS[pedido]} #${fila.orden} ${fila.empresa}, ${fila.cargo}`.replace(/;/g, ',').replace(/[\r\n"]+/g, ' ')
 }
 
-export function abrirClaude(cwd: string, texto: string): void {
+/** `metodo`: la carpeta del plugin (en la app empaquetada, fuera del asar para que Claude Code la lea). */
+export function abrirClaude(cwd: string, metodo: string, texto: string): void {
+  const claude = ['claude', '--plugin-dir', metodo, texto]
   const [cmd, args] =
     process.platform === 'win32'
-      ? ['wt.exe', ['-d', cwd, '--title', 'otterjobs · Claude', 'claude', texto]]
-      : ['x-terminal-emulator', ['-e', 'claude', texto]]
+      ? ['wt.exe', ['-d', cwd, '--title', 'otterjobs · Claude', ...claude]]
+      : ['x-terminal-emulator', ['-e', ...claude]]
   spawn(cmd, args, { cwd, detached: true, stdio: 'ignore' }).unref()
 }

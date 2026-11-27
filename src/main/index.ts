@@ -101,7 +101,7 @@ manejar('claude', (pedido, orden) => {
   if (typeof pedido !== 'string' || !Object.hasOwn(PEDIDOS, pedido)) throw new Error('pedido inválido')
   const r = datosOk()
   const fila = orden ? usar(r.db, leer).find((f) => f.orden === orden) : undefined
-  abrirClaude(r.datos, armarPedido(pedido as Pedido, fila))
+  abrirClaude(r.datos, join(app.getAppPath(), 'metodo').replace('app.asar', 'app.asar.unpacked'), armarPedido(pedido as Pedido, fila))
 })
 ipcMain.handle('historial', (_e, orden) => conDb((db) => historial(db, texto(orden, 5))))
 ipcMain.on('abrir', (_e, url) => {

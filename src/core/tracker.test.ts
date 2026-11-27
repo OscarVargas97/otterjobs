@@ -112,27 +112,27 @@ test('gmail: empresa por remitente o asunto, sin falsos positivos genéricos', (
 test('pedido a Claude sin ; ni comillas', () => {
   const p = armarPedido('preparar', { orden: '2', empresa: 'A; "B"', cargo: 'Dev' })
   assert.ok(!p.includes(';') && !p.includes('"'))
-  assert.equal(armarPedido('correo'), '/correo')
-  assert.equal(armarPedido('postular', { orden: '7', empresa: 'Pudu Labs', cargo: 'Dev' }), '/postular #7 Pudu Labs, Dev')
+  assert.equal(armarPedido('correo'), '/otterjobs:correo')
+  assert.equal(armarPedido('postular', { orden: '7', empresa: 'Pudu Labs', cargo: 'Dev' }), '/otterjobs:postular #7 Pudu Labs, Dev')
 })
 
-test('nuevo: crea la carpeta desde la plantilla, con la ruta de la CLI y la base vacía', () => {
+test('nuevo: crea la carpeta desde la plantilla, solo con datos y la base vacía', () => {
   const dir = join(mkdtempSync(join(tmpdir(), 'oj-')), 'datos')
-  crearDatos(dir, join(import.meta.dirname, '..', '..', 'plantilla'), 'pnpm otterjobs')
-  const agents = readFileSync(join(dir, 'AGENTS.md'), 'utf8')
-  assert.ok(agents.includes('**CLI de otterjobs:** `pnpm otterjobs`'))
-  assert.ok(existsSync(join(dir, '.claude', 'commands', 'perfil.md')) && existsSync(join(dir, 'fuentes')))
+  crearDatos(dir, join(import.meta.dirname, '..', '..', 'plantilla'))
+  assert.ok(existsSync(join(dir, 'perfil', 'preferencias.md')) && existsSync(join(dir, 'fuentes')))
+  // las instrucciones viven en metodo/, nunca en la carpeta de datos
+  assert.ok(!existsSync(join(dir, 'AGENTS.md')) && !existsSync(join(dir, 'CLAUDE.md')) && !existsSync(join(dir, '.claude')))
   assert.equal(leer(abrir(join(dir, 'otterjobs.db'))).length, 0)
-  assert.throws(() => crearDatos(dir, '', ''), /no está vacía/)
+  assert.throws(() => crearDatos(dir, ''), /no está vacía/)
 })
 
-test('cada pedido de la app es un comando de la plantilla', () => {
-  for (const c of Object.values(PEDIDOS)) assert.ok(existsSync(join(import.meta.dirname, '..', '..', 'plantilla', '.claude', 'commands', `${c.slice(1)}.md`)), c)
+test('cada pedido de la app es un comando del plugin metodo/', () => {
+  for (const c of Object.values(PEDIDOS)) assert.ok(existsSync(join(import.meta.dirname, '..', '..', 'metodo', 'commands', `${c.replace('/otterjobs:', '')}.md`)), c)
 })
 
 test('perfil: las etapas siguen las marcas pendiente de la plantilla', () => {
   const dir = join(mkdtempSync(join(tmpdir(), 'oj-')), 'datos')
-  crearDatos(dir, join(import.meta.dirname, '..', '..', 'plantilla'), 'pnpm otterjobs')
+  crearDatos(dir, join(import.meta.dirname, '..', '..', 'plantilla'))
   let e = estadoPerfil(dir)
   assert.equal(e.fuentes, 0)
   assert.ok(e.etapas.every((x) => !x.listo))

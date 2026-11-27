@@ -1,5 +1,5 @@
 // Las postulaciones, en la tabla `postulaciones` de otterjobs.db.
-// Todo cambio pasa por aquí: valida, registra el historial en `eventos` y reordena (AGENTS.md regla 8), en una transacción.
+// Todo cambio pasa por aquí: valida, registra el historial en `eventos` y reordena (regla 7 del método), en una transacción.
 import { ahora, transaccion, type Db } from './db.ts'
 
 export const ESTADOS = ['Oferta', 'Entrevista', 'Postulado', 'Por postular', 'Descartada', 'Rechazada'] as const

@@ -31,6 +31,10 @@ Lo que el asistente necesita saber para actuar por ti. Vive aquí, en tus datos,
 - **Chat (WhatsApp, LinkedIn):** corto y natural. Saludo solo al inicio, sin repetir el nombre de la persona en medio (suena automático).
 - **Formalidad por defecto:**
 
+## Reglas propias
+
+<!-- Lo que solo aplica a esta persona: temas que no se mencionan, trabajo que no es suyo, cifras que no se publican, idioma y registro. /perfil las propone. -->
+
 ## Correcciones
 
 | Fecha | Qué corregí | Regla que queda |

@@ -1,8 +1,8 @@
-# AGENTS.md
+# Método de otterjobs
 
-Esta carpeta es la fuente de verdad de mi perfil laboral. Antes de redactar algo sobre mí, lee `perfil/perfil.md` (los hechos), `perfil/preferencias.md` (cómo actuar por mí) y `perfil/marca.md` (el enfoque). `otterjobs perfil` dice qué etapas del perfil faltan: si falta alguna, propón `/perfil` antes que nada.
+Estás en la carpeta de datos de otterjobs de una persona que busca trabajo: es la fuente de verdad de su perfil laboral. Antes de redactar algo sobre ella, lee `perfil/perfil.md` (los hechos), `perfil/preferencias.md` (cómo actuar por ella) y `perfil/marca.md` (el enfoque). `otterjobs perfil` dice qué etapas del perfil faltan: si falta alguna, propón `/perfil` antes que nada.
 
-**CLI de otterjobs:** `{{CLI}}` (en los comandos aparece como `otterjobs`).
+**CLI de otterjobs:** `{{CLI}}` (en los comandos aparece como `otterjobs`). Los comandos de abajo son de este plugin (`/otterjobs:perfil`, o `/perfil` si no choca con otro).
 
 ## Reglas
 
@@ -13,11 +13,11 @@ Esta carpeta es la fuente de verdad de mi perfil laboral. Antes de redactar algo
 5. **`fuentes/` es solo de lectura y no se versiona.** No copies su contenido literal a otros archivos.
 6. **Orden:** primero `perfil/perfil.md`, después `perfil/marca.md` y al final los derivados (CV, perfiles, posts).
 7. **Tracker:** cada oferta, postulación o cambio de estado se registra en el momento con `otterjobs add|set` (o en la app). Nunca abras `otterjobs.db` con otra herramienta. El próximo paso va en `proximo_paso` (una línea) y su fecha en `vence` (AAAA-MM-DD). Las tareas sueltas, con `otterjobs pendiente "texto"` y `otterjobs hecha ID`.
-8. **Preferencias en los datos, no en la memoria.** Lo que necesitas saber para actuar por mí (cargos, piso de renta, desde qué correo postulo, tono de los mensajes) está en `perfil/preferencias.md`. Cuando corrija algo que se va a repetir, anótalo ahí en «Correcciones» en el momento; no lo guardes en la memoria del asistente.
+8. **Preferencias en los datos, no en la memoria.** Lo que necesitas saber para actuar por ella (cargos, piso de renta, desde qué correo postula, tono de los mensajes) está en `perfil/preferencias.md`. Cuando corrige algo que se va a repetir, anótalo ahí en «Correcciones» en el momento; no lo guardes en la memoria del asistente.
 
 ### Reglas propias
 
-<!-- Lo que solo aplica a esta persona (temas que no se mencionan, proyectos que no son suyos). /perfil las propone. -->
+Las de esta persona están en `perfil/preferencias.md` («Reglas propias») y valen igual que las de arriba.
 
 ## Dónde va cada cosa
 

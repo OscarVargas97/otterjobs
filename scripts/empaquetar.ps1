@@ -21,7 +21,7 @@ try {
     Remove-Item $publicado -Recurse -Force -ErrorAction SilentlyContinue
     # Solo entra out/ y las dependencias de producción: el código fuente y la config quedan fuera.
     pnpm exec electron-packager . otterjobs --platform=win32 --arch=x64 --out=$publicado --overwrite `
-        --app-version=$numerica --build-version=$numerica `
+        --app-version=$numerica --build-version=$numerica --asar.unpackDir=metodo `
         --ignore='^/(src|scripts|artefactos|\.github|docs)($|/)' --ignore='^/(tsconfig|electron\.vite\.config)\.' --ignore='^/[^/]+\.md$'
     if ($LASTEXITCODE) { throw 'electron-packager falló' }
 } finally { Pop-Location }

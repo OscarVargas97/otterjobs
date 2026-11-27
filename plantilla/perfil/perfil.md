@@ -32,7 +32,7 @@ Cargo objetivo, años de experiencia, especialidad y sectores.
 
 ## 8. Cómo contar las salidas y los vacíos
 
-<!-- Una línea por salida o vacío, en la versión que la persona aprobó. Lo que no se menciona va también a «Reglas propias» de AGENTS.md. -->
+<!-- Una línea por salida o vacío, en la versión que la persona aprobó. Lo que no se menciona va también a «Reglas propias» de `perfil/preferencias.md`. -->
 
 ## Qué quedó fuera por sensible
 

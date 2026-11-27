@@ -38,9 +38,10 @@ async function main(a: string[]) {
   if (cmd === 'nuevo') {
     if (!resto[0]) throw new Error('uso: nuevo <carpeta>')
     const raiz = resolve(import.meta.dirname, '..')
-    crearDatos(resto[0], join(raiz, 'plantilla'), `pnpm -s --dir ${raiz.replace(/\\/g, '/')} otterjobs`)
+    crearDatos(resto[0], join(raiz, 'plantilla'))
     guardarCarpetaDatos(resto[0])
-    return console.log(`Carpeta de datos creada en ${resto[0]}. Deja tu material en fuentes/, abre Claude Code ahí y escribe /perfil.`)
+    const metodo = join(raiz, 'metodo').replace(/\\/g, '/')
+    return console.log(`Carpeta de datos creada en ${resto[0]}. Deja tu material en fuentes/, abre ahí \`claude --plugin-dir ${metodo}\` y escribe /otterjobs:perfil.`)
   }
   if (cmd === 'pdf') {
     if (!resto[0]) throw new Error('uso: pdf <archivo.html> [salida.pdf]')

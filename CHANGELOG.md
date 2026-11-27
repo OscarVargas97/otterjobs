@@ -14,6 +14,7 @@ Lo que trae cada versión de otterjobs, lo más nuevo arriba.
 - `otterjobs pdf <html>`: el CV a PDF con Edge o Chrome.
 - En la app: «Mi perfil con Claude» y «Buscar ofertas»; los botones de cada postulación abren los comandos nuevos.
 - README con la instalación completa desde cero.
+- **El método como plugin**: las reglas y los comandos viven en `metodo/` (plugin de Claude Code) y la app lo abre con `--plugin-dir`. La carpeta de datos queda solo con datos, y tus reglas propias pasan a `perfil/preferencias.md`.
 
 
 `refactor/datos-sqlite`
@@ -25,7 +26,7 @@ Lo que trae cada versión de otterjobs, lo más nuevo arriba.
 
 ## 0.1.0 · Primera versión
 
-`fase/1-base` · F1: el sistema de postulaciones de la carpeta de datos pasa a una app de escritorio
+`fase/1-base` · F1: el sistema de postulaciones pasa a una app de escritorio
 
 ### Nuevo
 - **Hoy**: los próximos pasos de cada postulación activa con su vencimiento (vencidos en rojo, hoy en amarillo) y las tareas sueltas de `tareas.md`, que se marcan y se agregan desde la app.

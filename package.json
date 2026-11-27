@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@11.24.0",
-  "description": "App de escritorio para la búsqueda de trabajo: tablero, tareas, bandeja de Gmail y Claude Code sobre la carpeta de datos",
+  "description": "App de escritorio para la búsqueda de trabajo: tablero, tareas, bandeja de Gmail y Claude Code sobre tu carpeta de datos",
   "main": "./out/main/index.js",
   "scripts": {
     "postinstall": "install-electron --no",

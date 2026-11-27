@@ -14,7 +14,7 @@ La estrategia: qué se destaca, en qué orden y con qué tono. Los hechos que la
 | Idea central | Si te recuerdan por una sola cosa, ¿cuál? | |
 | Tono | ¿Cómo quieres sonar? (opinión con criterio, cercano, técnico, formal…) | |
 | Visibilidad | ¿Vas a publicar? ¿Con qué frecuencia y sobre qué? | |
-| Límites | ¿Qué no se menciona nunca? (también va a «Reglas propias» de `AGENTS.md`) | |
+| Límites | ¿Qué no se menciona nunca? (también va a «Reglas propias» de `perfil/preferencias.md`) | |
 
 ## Cómo me describo (en mis palabras)
 
