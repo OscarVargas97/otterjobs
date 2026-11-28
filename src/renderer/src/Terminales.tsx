@@ -66,7 +66,7 @@ export function Terminales({ visible, alAbrir, alCambiar }: { visible: boolean; 
   }
 
   return (
-    <section className={visible ? 'flex min-w-0 flex-1 flex-col bg-[#141414]' : 'hidden'}>
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-border px-2 pt-2">
         {sesiones.map((s) => (
           <div key={s.id} className={`flex items-center gap-2 rounded-t-md px-3 py-1.5 text-sm ${s.id === activa ? 'bg-sidebar-accent' : 'text-muted-foreground hover:bg-sidebar-accent/60'}`}>

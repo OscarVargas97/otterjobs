@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ArrowLeft, Bot, CalendarClock, Check, ChevronRight, ExternalLink, FileText, FolderOpen, Inbox, KanbanSquare, Mail, Megaphone, Plus, RefreshCw, SquareTerminal, UserRound, X } from 'lucide-react'
+import { ArrowLeft, Bot, CalendarClock, Check, ChevronRight, ExternalLink, FileText, FolderOpen, Inbox, KanbanSquare, Mail, Megaphone, Minus, Plus, RefreshCw, UserRound, X } from 'lucide-react'
 import type { Correo } from '../../core/gmail.ts'
 import type { Pendiente } from '../../core/pendientes.ts'
 import type { Evento, Fila, Tarea } from '../../core/tracker.ts'
@@ -47,7 +47,8 @@ const COLOR_PROB: Record<string, string> = { Alta: 'bg-ok/20 text-ok', 'Media-al
 
 export function App() {
   const [s, setS] = useState<Estado | null>(null)
-  const [vista, setVista] = useState<'hoy' | 'tablero' | 'bandeja' | 'perfil' | 'linkedin' | 'claude'>('hoy')
+  const [vista, setVista] = useState<'hoy' | 'tablero' | 'bandeja' | 'perfil' | 'linkedin'>('hoy')
+  const [chat, setChat] = useState(false)
   const [abierta, setAbierta] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [ocupado, setOcupado] = useState(false)
@@ -95,7 +96,6 @@ export function App() {
         <Nav activo={vista === 'hoy' && !fila} onClick={() => ir('hoy')} icono={<CalendarClock />} texto="Hoy" n={vencidas || undefined} alerta />
         <Nav activo={vista === 'tablero' && !fila} onClick={() => ir('tablero')} icono={<KanbanSquare />} texto="Tablero" n={filas.length} />
         <Nav activo={vista === 'bandeja' && !fila} onClick={() => ir('bandeja')} icono={<Inbox />} texto="Bandeja" n={pendientes || undefined} alerta />
-        <Nav activo={vista === 'claude'} onClick={() => setVista('claude')} icono={<SquareTerminal />} texto="Claude" n={sesiones || undefined} />
         <Nav activo={vista === 'perfil' && !fila} onClick={() => ir('perfil')} icono={<UserRound />} texto="Perfil" n={s.perfil?.estado.etapas.filter((e) => !e.listo).length || undefined} />
         <Nav activo={vista === 'linkedin' && !fila} onClick={() => ir('linkedin')} icono={<Megaphone />} texto="LinkedIn" n={s.linkedin?.posts.filter((p) => p.estado === 'aprobado').length || undefined} />
         <div className="mt-auto space-y-1 px-2 text-2xs text-muted-foreground">
@@ -104,7 +104,7 @@ export function App() {
         </div>
       </nav>
 
-      <main className={`min-w-0 flex-1 overflow-auto p-5 ${vista === 'claude' ? 'hidden' : ''}`}>
+      <main className="min-w-0 flex-1 overflow-auto p-5 pb-20">
         {error && (
           <div className="mb-3 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-sm text-destructive">
             <span className="flex-1">{error}</span>
@@ -123,7 +123,18 @@ export function App() {
           </>
         )}
       </main>
-      <Terminales visible={vista === 'claude'} alAbrir={() => setVista('claude')} alCambiar={setSesiones} />
+      {/* Claude flota abajo a la derecha, como un chat: se abre solo cuando un botón inicia una sesión */}
+      <div className={`fixed bottom-20 right-5 z-40 flex h-[min(80vh,760px)] w-[min(1000px,calc(100vw-15rem))] flex-col overflow-hidden rounded-xl border border-border bg-[#141414] shadow-2xl ${chat ? '' : 'hidden'}`}>
+        <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2 text-sm font-medium">
+          <Bot className="size-4" /> Claude
+          <button onClick={() => setChat(false)} title="Minimizar" className="ml-auto text-muted-foreground hover:text-foreground"><Minus className="size-4" /></button>
+        </div>
+        <Terminales visible={chat} alAbrir={() => setChat(true)} alCambiar={setSesiones} />
+      </div>
+      <button onClick={() => setChat(!chat)} title="Claude" className="fixed bottom-5 right-5 z-40 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:opacity-90">
+        {chat ? <X className="size-5" /> : <Bot className="size-5" />}
+        {sesiones > 0 && !chat && <span className="absolute -right-0.5 -top-0.5 flex size-5 items-center justify-center rounded-full bg-destructive text-2xs text-white">{sesiones}</span>}
+      </button>
     </div>
   )
 }
