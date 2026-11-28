@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ArrowLeft, Bot, CalendarClock, Check, ChevronRight, Compass, Database, ExternalLink, FileText, FolderOpen, Inbox, KanbanSquare, Mail, Megaphone, Minus, Pencil, Plus, RefreshCw, Telescope, Trash2, UserRound, X } from 'lucide-react'
+import { ArrowLeft, Bot, CalendarClock, Check, ChevronRight, Compass, Database, ExternalLink, FileText, FolderOpen, Inbox, KanbanSquare, Mail, Megaphone, Minus, PanelLeftClose, PanelLeftOpen, Pencil, Plus, RefreshCw, Telescope, Trash2, UserRound, X } from 'lucide-react'
 import type { Correo } from '../../core/gmail.ts'
 import type { Pendiente } from '../../core/pendientes.ts'
 import type { Evento, Fila, Tarea } from '../../core/tracker.ts'
@@ -68,6 +68,8 @@ export function App() {
   const [ocupado, setOcupado] = useState(false)
   const [sesiones, setSesiones] = useState(0)
   const ir = (v: typeof vista) => (setVista(v), setAbierta(null))
+  const [plegado, setPlegado] = useState(() => localStorage.getItem('menuPlegado') === '1')
+  const plegar = (x: boolean) => (setPlegado(x), localStorage.setItem('menuPlegado', x ? '1' : ''))
 
   useEffect(() => {
     // Mientras falte lo indispensable, la app abre en la Guía.
@@ -106,21 +108,43 @@ export function App() {
 
   return (
     <div className="flex h-full">
-      <nav className="flex w-52 shrink-0 flex-col gap-1 border-r border-border bg-sidebar p-3">
-        <div className="mb-3 px-2 text-lg font-semibold">otterjobs</div>
-        <Nav activo={vista === 'guia' && !fila} onClick={() => ir('guia')} icono={<Compass />} texto="Guía" n={(s.perfil && guia(s).filter((x) => !x.ok).length) || undefined} />
-        <Nav activo={vista === 'hoy' && !fila} onClick={() => ir('hoy')} icono={<CalendarClock />} texto="Hoy" n={vencidas || undefined} alerta />
-        <Nav activo={vista === 'tablero' && !fila} onClick={() => ir('tablero')} icono={<KanbanSquare />} texto="Tablero" n={filas.length} />
-        <Nav activo={vista === 'bandeja' && !fila} onClick={() => ir('bandeja')} icono={<Inbox />} texto="Bandeja" n={pendientes || undefined} alerta />
-        <Nav activo={vista === 'fuentes' && !fila} onClick={() => ir('fuentes')} icono={<Database />} texto="Fuentes" n={s.perfil?.estado.fuentes || undefined} />
-        <Nav activo={vista === 'perfil' && !fila} onClick={() => ir('perfil')} icono={<UserRound />} texto="Perfil" n={s.perfil?.estado.etapas.filter((e) => !e.listo).length || undefined} />
-        <Nav activo={vista === 'cv' && !fila} onClick={() => ir('cv')} icono={<FileText />} texto="CV" n={s.perfil?.cvs.length || undefined} />
-        <Nav activo={vista === 'mercado' && !fila} onClick={() => ir('mercado')} icono={<Telescope />} texto="Mercado" n={s.mercado?.length || undefined} />
-        <Nav activo={vista === 'linkedin' && !fila} onClick={() => ir('linkedin')} icono={<Megaphone />} texto="LinkedIn" n={s.linkedin?.posts.filter((p) => p.estado === 'aprobado').length || undefined} />
-        <div className="mt-auto space-y-1 px-2 text-2xs text-muted-foreground">
-          <div className="truncate" title={s.datos}>{s.datos}</div>
-          <div>v{s.version}</div>
+      <nav className={`flex shrink-0 flex-col gap-1 overflow-y-auto border-r border-border bg-sidebar p-3 ${plegado ? 'w-14' : 'w-52'}`}>
+        <div className="mb-2 flex items-center gap-2 px-2">
+          {!plegado && <span className="flex-1 text-lg font-semibold">otterjobs</span>}
+          <button title={plegado ? 'Desplegar menú' : 'Plegar menú'} className="text-muted-foreground hover:text-foreground [&_svg]:size-4" onClick={() => plegar(!plegado)}>{plegado ? <PanelLeftOpen /> : <PanelLeftClose />}</button>
         </div>
+        {[
+          ['Día a día', [
+            ['hoy', <CalendarClock />, 'Hoy', vencidas || undefined, true],
+            ['tablero', <KanbanSquare />, 'Tablero', filas.length],
+            ['bandeja', <Inbox />, 'Bandeja', pendientes || undefined, true]
+          ]],
+          ['Búsqueda', [
+            ['mercado', <Telescope />, 'Mercado', s.mercado?.length || undefined],
+            ['linkedin', <Megaphone />, 'LinkedIn', s.linkedin?.posts.filter((p) => p.estado === 'aprobado').length || undefined]
+          ]],
+          ['Tu perfil', [
+            ['perfil', <UserRound />, 'Perfil', s.perfil?.estado.etapas.filter((e) => !e.listo).length || undefined],
+            ['cv', <FileText />, 'CV', s.perfil?.cvs.length || undefined]
+          ]],
+          ['Configuración', [
+            ['guia', <Compass />, 'Guía', (s.perfil && guia(s).filter((x) => !x.ok).length) || undefined],
+            ['fuentes', <Database />, 'Fuentes', s.perfil?.estado.fuentes || undefined]
+          ]]
+        ].map(([grupo, items]) => (
+          <div key={grupo as string} className="space-y-1">
+            {plegado ? <div className="mx-2 mt-2 border-t border-border" /> : <div className="mt-3 px-2 text-2xs font-semibold uppercase text-muted-foreground">{grupo as string}</div>}
+            {(items as [Vista, ReactNode, string, number | undefined, boolean?][]).map(([v, icono, texto, n, alerta]) => (
+              <Nav key={v} activo={vista === v && !fila} onClick={() => ir(v)} icono={icono} texto={texto} n={n} alerta={alerta} plegado={plegado} />
+            ))}
+          </div>
+        ))}
+        {!plegado && (
+          <div className="mt-auto space-y-1 px-2 pt-3 text-2xs text-muted-foreground">
+            <div className="truncate" title={s.datos}>{s.datos}</div>
+            <div>v{s.version}</div>
+          </div>
+        )}
       </nav>
 
       <main className="min-w-0 flex-1 overflow-auto p-5 pb-20">
@@ -501,12 +525,12 @@ const Campo = ({ t, children }: { t: string; children: ReactNode }) => (
   </label>
 )
 
-function Nav({ activo, onClick, icono, texto, n, alerta }: { activo: boolean; onClick: () => void; icono: ReactNode; texto: string; n?: number; alerta?: boolean }) {
+function Nav({ activo, onClick, icono, texto, n, alerta, plegado }: { activo: boolean; onClick: () => void; icono: ReactNode; texto: string; n?: number; alerta?: boolean; plegado?: boolean }) {
   return (
-    <button onClick={onClick} className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm [&_svg]:size-4 ${activo ? 'bg-sidebar-accent text-foreground' : 'text-muted-foreground hover:bg-sidebar-accent/60'}`}>
+    <button onClick={onClick} title={plegado ? texto : undefined} aria-label={texto} className={`relative flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm [&_svg]:size-4 ${activo ? 'bg-sidebar-accent text-foreground' : 'text-muted-foreground hover:bg-sidebar-accent/60'}`}>
       {icono}
-      <span className="flex-1 text-left">{texto}</span>
-      {n !== undefined && <span className={`rounded-full px-1.5 text-2xs ${alerta ? 'bg-destructive text-white' : 'bg-muted'}`}>{n}</span>}
+      {!plegado && <span className="flex-1 text-left">{texto}</span>}
+      {n !== undefined && (plegado ? alerta && <span className="absolute right-1 top-1 size-2 rounded-full bg-destructive" /> : <span className={`rounded-full px-1.5 text-2xs ${alerta ? 'bg-destructive text-white' : 'bg-muted'}`}>{n}</span>)}
     </button>
   )
 }
