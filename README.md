@@ -11,7 +11,7 @@ Lo determinista (tracker, historial, estado del perfil, lectura de Gmail) lo hac
 
 ## 1. Requisitos
 
-Probado en Windows 11. En Linux funciona la CLI; los botones de la app abren Claude en `x-terminal-emulator`. macOS no está probado.
+Probado en Windows 11. En Linux funciona la CLI; la app no está probada. macOS tampoco.
 
 | Qué | Para qué | Cómo instalarlo (Windows) |
 |---|---|---|
@@ -19,7 +19,6 @@ Probado en Windows 11. En Linux funciona la CLI; los botones de la app abren Cla
 | pnpm | Instala las dependencias | `npm install -g pnpm` |
 | Git | Clonar este repo y versionar tus datos. Claude Code en Windows también lo usa | `winget install Git.Git` |
 | Claude Code | El método (`/perfil`, `/postular`…). Necesita una cuenta de Claude con Claude Code (plan Pro o Max) | `npm install -g @anthropic-ai/claude-code`, luego `claude` una vez para iniciar sesión |
-| Windows Terminal | Los botones de la app abren Claude ahí | Viene con Windows 11; si no, `winget install Microsoft.WindowsTerminal` |
 | Microsoft Edge o Chrome | `otterjobs pdf`: el CV de HTML a PDF | Edge viene con Windows. Otra ruta: variable `OTTERJOBS_NAVEGADOR` |
 | Python 3 y `pypdf` (opcional) | La prueba de texto plano del CV en `/revisar` | `winget install Python.Python.3.13` y `pip install pypdf` |
 
@@ -58,7 +57,7 @@ git commit -m "inicio"
 
 1. Deja en `datos/fuentes/` todo lo que tengas: CV antiguos, el PDF o la exportación de LinkedIn, certificados, cartas de recomendación, evaluaciones de desempeño, chats exportados (Discord, Slack, WhatsApp), notas sueltas.
 2. Revisa qué falta: `pnpm otterjobs perfil` (desde la carpeta de otterjobs).
-3. Abre Claude Code en tu carpeta de datos con el método de otterjobs (`cd datos` y `claude --plugin-dir ../metodo --settings ../metodo/settings.json`; el segundo deja fuera el `CLAUDE.md` de desarrollo de otterjobs) y escribe `/perfil` (o `/otterjobs:perfil` si otro plugin usa el mismo nombre). Los botones de la app lo abren así solos. Trabaja una etapa por vez, te pregunta lo que falta y escribe en tus archivos solo lo que está respaldado:
+3. Abre Claude Code en tu carpeta de datos con el método de otterjobs (`cd datos` y `claude --plugin-dir ../metodo --settings ../metodo/settings.json`; el segundo deja fuera el `CLAUDE.md` de desarrollo de otterjobs) y escribe `/perfil` (o `/otterjobs:perfil` si otro plugin usa el mismo nombre). Los botones de la app lo abren así solos, en una terminal dentro de la misma app (vista «Claude», una pestaña por sesión). Trabaja una etapa por vez, te pregunta lo que falta y escribe en tus archivos solo lo que está respaldado:
 
 | Etapa | Archivo | Qué queda |
 |---|---|---|
@@ -94,20 +93,11 @@ La CLI hace lo mismo que la app: `pnpm otterjobs ver`, `stats`, `tareas`, `histo
 
 ## 6. Bandeja de Gmail (opcional)
 
-La app lee (solo lee) los correos de postulaciones por IMAP.
+La app lee (solo lee) los correos de postulaciones por IMAP. No usa IA para leerlos: un script guarda los que nombran una empresa de tu tracker o hablan de reclutamiento, y «Revisar con Claude» (`/correo`) los clasifica y actualiza tus postulaciones.
 
-1. Activa la [verificación en dos pasos](https://myaccount.google.com/signinoptions/twosv) en la cuenta donde te llegan los correos de reclutadores.
-2. Crea una [contraseña de aplicación](https://myaccount.google.com/apppasswords) con el nombre `otterjobs`. Google muestra 16 letras.
-3. Crea el archivo `~/.otterjobs/.env` (en Windows, `C:\Users\<tu usuario>\.otterjobs\.env`) con:
+En la app, abre **Bandeja**: te guía en tres pasos, con los enlaces de Google (verificación en dos pasos y [contraseña de aplicación](https://myaccount.google.com/apppasswords)). Al pegar la contraseña, prueba la conexión, la guarda en `~/.otterjobs/.env` (fuera de los repos) y busca los correos del último mes.
 
-   ```
-   GMAIL_USER=tu.correo@gmail.com
-   GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
-   ```
-
-4. Prueba con `pnpm otterjobs gmail --dias 7`.
-
-El archivo queda fuera de los repos. Para revocar el acceso, borra la contraseña de aplicación en Google.
+Sin la app: crea `~/.otterjobs/.env` con `GMAIL_USER=…` y `GMAIL_APP_PASSWORD=…` y corre `pnpm otterjobs gmail --dias 7`. Para revocar el acceso, borra la contraseña de aplicación en Google.
 
 ## Desarrollo
 

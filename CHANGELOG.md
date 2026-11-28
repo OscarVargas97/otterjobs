@@ -4,9 +4,13 @@ Lo que trae cada versión de otterjobs, lo más nuevo arriba.
 
 ## Sin publicar
 
-`feat/plantilla`
+`feat/plantilla`, `feat/terminal`
 
 ### Nuevo
+- **Claude dentro de la app**: los botones con Claude abren Claude Code en la vista «Claude», una pestaña por sesión, en vez de una ventana aparte de Windows Terminal.
+- **Conectar Gmail desde la app**: la Bandeja guía los tres pasos con los enlaces de Google, prueba la conexión antes de guardar y busca los correos del último mes. Ya no hay que crear el `.env` a mano.
+- **Hoy más legible**: los próximos pasos se agrupan en vencidas, hoy, próximas y sin fecha (plegada), con la fecha y la empresa en columnas; «Otras tareas» va al costado.
+- **Ficha de la postulación en su propia vista**, con espacio para los campos y el botón para volver, en vez del panel lateral angosto.
 - **Tu propio perfil**: `otterjobs nuevo <carpeta>` crea una carpeta de datos vacía desde `plantilla/`, para que cualquier persona arme el suyo desde su material (CV, LinkedIn, chats exportados, notas).
 - **Método por etapas**: `/perfil` arma hechos, preferencias, mercado, marca, señales de alerta, CV, perfiles públicos y la primera revisión, y te pregunta lo que falta. `otterjobs perfil` dice qué etapas están listas y cuál sigue.
 - **Comandos de búsqueda**: `/buscar` (ofertas abiertas por probabilidad), `/evaluar`, `/postular`, `/entrevista` (práctica con puntaje), `/mensaje` (al portapapeles) y `/revisar` (evaluación del CV con registro).
