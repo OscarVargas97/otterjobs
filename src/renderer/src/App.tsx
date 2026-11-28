@@ -47,7 +47,7 @@ const COLOR_PROB: Record<string, string> = { Alta: 'bg-ok/20 text-ok', 'Media-al
 
 export function App() {
   const [s, setS] = useState<Estado | null>(null)
-  const [vista, setVista] = useState<'hoy' | 'tablero' | 'bandeja' | 'perfil' | 'linkedin'>('hoy')
+  const [vista, setVista] = useState<'hoy' | 'tablero' | 'bandeja' | 'perfil' | 'cv' | 'linkedin'>('hoy')
   const [chat, setChat] = useState(false)
   const [abierta, setAbierta] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -97,6 +97,7 @@ export function App() {
         <Nav activo={vista === 'tablero' && !fila} onClick={() => ir('tablero')} icono={<KanbanSquare />} texto="Tablero" n={filas.length} />
         <Nav activo={vista === 'bandeja' && !fila} onClick={() => ir('bandeja')} icono={<Inbox />} texto="Bandeja" n={pendientes || undefined} alerta />
         <Nav activo={vista === 'perfil' && !fila} onClick={() => ir('perfil')} icono={<UserRound />} texto="Perfil" n={s.perfil?.estado.etapas.filter((e) => !e.listo).length || undefined} />
+        <Nav activo={vista === 'cv' && !fila} onClick={() => ir('cv')} icono={<FileText />} texto="CV" n={s.perfil?.cvs.length || undefined} />
         <Nav activo={vista === 'linkedin' && !fila} onClick={() => ir('linkedin')} icono={<Megaphone />} texto="LinkedIn" n={s.linkedin?.posts.filter((p) => p.estado === 'aprobado').length || undefined} />
         <div className="mt-auto space-y-1 px-2 text-2xs text-muted-foreground">
           <div className="truncate" title={s.datos}>{s.datos}</div>
@@ -119,6 +120,7 @@ export function App() {
             {vista === 'tablero' && <Tablero filas={filas} abrir={setAbierta} hacer={hacer} />}
             {vista === 'bandeja' && <Bandeja s={s} abrir={setAbierta} hacer={hacer} ocupado={ocupado} />}
             {vista === 'perfil' && s.perfil && <Perfil s={s} hacer={hacer} ocupado={ocupado} />}
+            {vista === 'cv' && s.perfil && <MisCv cvs={s.perfil.cvs} hacer={hacer} />}
             {vista === 'linkedin' && s.linkedin && <Linkedin li={s.linkedin} hacer={hacer} ocupado={ocupado} />}
           </>
         )}
@@ -502,7 +504,6 @@ function Perfil({ s, hacer, ocupado }: { s: Estado; hacer: Hacer; ocupado: boole
   const e = p.estado.etapas.find((x) => x.id === etapa)!
   const manual = p.manual.includes(etapa)
   const [ver, setVer] = useState(false)
-  const [misCv, setMisCv] = useState(false)
   const vacio = !Object.values(p.valores[etapa] ?? {}).some((v) => (Array.isArray(v) ? v.length : String(v).trim()))
   const conClaude = () => hacer(() => api.claude('perfil', etapa))
   return (
@@ -515,7 +516,7 @@ function Perfil({ s, hacer, ocupado }: { s: Estado; hacer: Hacer; ocupado: boole
         </p>
         <div className="space-y-0.5">
           {p.estado.etapas.map((x) => (
-            <button key={x.id} onClick={() => (setEtapa(x.id), setMisCv(false))} className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm ${x.id === etapa && !misCv ? 'bg-accent' : 'hover:bg-accent/60'}`}>
+            <button key={x.id} onClick={() => setEtapa(x.id)} className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm ${x.id === etapa ? 'bg-accent' : 'hover:bg-accent/60'}`}>
               <span className={`w-4 ${x.listo ? 'text-ok' : 'text-muted-foreground'}`}>{x.listo ? <Check className="size-4" /> : '·'}</span>
               <span className="flex-1">
                 <span className="block">{NOMBRE[x.id]}</span>
@@ -524,11 +525,6 @@ function Perfil({ s, hacer, ocupado }: { s: Estado; hacer: Hacer; ocupado: boole
             </button>
           ))}
         </div>
-        <button onClick={() => setMisCv(true)} className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm ${misCv ? 'bg-accent' : 'hover:bg-accent/60'}`}>
-          <FileText className="size-4 text-muted-foreground" />
-          <span className="flex-1">Mis CV</span>
-          <span className="text-2xs text-muted-foreground">{p.cvs.length}</span>
-        </button>
         {p.manual.length > 0 && (
           <div className="space-y-2 rounded-md border border-border p-2 text-xs text-muted-foreground">
             <p>Ya tienes archivos de perfil escritos fuera de la app. Claude puede llevarlos a estos formularios sin perder nada.</p>
@@ -537,7 +533,7 @@ function Perfil({ s, hacer, ocupado }: { s: Estado; hacer: Hacer; ocupado: boole
         )}
       </div>
 
-      {misCv ? <MisCv cvs={p.cvs} hacer={hacer} /> : <div className="min-w-0 max-w-3xl flex-1 space-y-4">
+      <div className="min-w-0 max-w-3xl flex-1 space-y-4">
         <div className="flex items-start gap-3">
           <div className="flex-1">
             <h2 className="text-base font-semibold">{NOMBRE[etapa]}</h2>
@@ -564,7 +560,7 @@ function Perfil({ s, hacer, ocupado }: { s: Estado; hacer: Hacer; ocupado: boole
         )}
         <Formulario key={etapa + JSON.stringify(p.valores[etapa] ?? null)} etapa={etapa} p={p} listo={e.listo} hacer={hacer} ocupado={ocupado} />
         </>}
-      </div>}
+      </div>
     </div>
   )
 }
@@ -729,7 +725,7 @@ function ArchivosPostulacion({ carpeta, hacer }: { carpeta: string; hacer: Hacer
 function MisCv({ cvs, hacer }: { cvs: NonNullable<Estado['perfil']>['cvs']; hacer: Hacer }) {
   const [sel, setSel] = useState(cvs[0]?.ruta)
   const cv = cvs.find((c) => c.ruta === sel) ?? cvs[0]
-  if (!cv) return <p className="flex-1 text-sm text-muted-foreground">Todavía no hay CV. Se generan en la etapa CV y con cada postulación (/postular).</p>
+  if (!cv) return <p className="text-sm text-muted-foreground">Todavía no hay CV. El base se arma en Perfil → CV, y cada postulación trae el suyo (/postular).</p>
   return (
     <div className="flex min-w-0 flex-1 gap-4">
       <div className="w-64 shrink-0 space-y-0.5 overflow-auto">
