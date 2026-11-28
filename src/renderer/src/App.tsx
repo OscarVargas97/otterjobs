@@ -1127,62 +1127,112 @@ function ListaArchivos({ rutas, hacer, vacio }: { rutas: string[]; hacer: Hacer;
   )
 }
 
-const Tarjeta = ({ t, d, children }: { t: string; d: ReactNode; children: ReactNode }) => (
-  <section className="space-y-3 rounded-lg border border-border bg-card p-4">
+const Bloque = ({ t, d, children }: { t: string; d?: ReactNode; children: ReactNode }) => (
+  <section className="space-y-2 border-t border-border pt-4 first:border-0 first:pt-0">
     <div>
-      <h3 className="text-sm font-semibold">{t}</h3>
-      <p className="mt-0.5 text-xs text-muted-foreground">{d}</p>
+      <h4 className="text-sm font-medium">{t}</h4>
+      {d && <p className="mt-0.5 text-xs text-muted-foreground">{d}</p>}
     </div>
     {children}
   </section>
 )
 
+type IdFuente = 'cv' | 'linkedin' | 'git' | 'notas' | 'gmail' | 'otros'
+
 /** El material del que sale el perfil. Todo queda en fuentes/ de la carpeta de datos (no se publica); los tokens, en este computador. */
 function Fuentes({ s, hacer, ocupado, ir }: { s: Estado; hacer: Hacer; ocupado: boolean; ir: Ir }) {
   const f = s.fuentes!
+  const [sel, setSel] = useState<IdFuente>('cv')
   const [nota, setNota] = useState({ titulo: '', texto: '' })
   const csv = Object.entries(f.linkedin)
+  const n = (x: number, uno: string, varios: string, vacio: string) => (x ? `${x} ${x === 1 ? uno : varios}` : vacio)
+  const lista: { id: IdFuente; t: string; estado: string; ok: boolean; d: string }[] = [
+    { id: 'cv', t: 'CV y documentos', estado: n(f.cv.length, 'archivo', 'archivos', 'Vacío'), ok: f.cv.length > 0, d: 'Tu CV en PDF (el actual y los antiguos), certificados, cartas de recomendación, evaluaciones de desempeño.' },
+    { id: 'linkedin', t: 'LinkedIn', estado: csv.length ? `${csv.length} archivos importados` : 'Sin importar', ok: csv.length > 0, d: 'Tu exportación de datos de LinkedIn: cargos, educación, habilidades, recomendaciones y posts.' },
+    { id: 'git', t: 'Git', estado: n(f.git.length, 'resumen', 'resúmenes', 'Sin configurar'), ok: f.git.length > 0, d: 'Lo que construiste, sacado de tus repos públicos y privados: periodo, volumen, lenguajes y mensajes de tus commits, y tus PRs. Queda como resumen en fuentes/git/; no se copia código.' },
+    { id: 'notas', t: 'Notas', estado: n(f.notas.length, 'nota', 'notas', 'Sin notas'), ok: f.notas.length > 0, d: 'Lo que no es un archivo: tu perfil de otro portal, una evaluación, apuntes de lo que hiciste en un trabajo.' },
+    { id: 'gmail', t: 'Gmail', estado: n(s.gmail?.length ?? 0, 'cuenta', 'cuentas', 'Sin conectar'), ok: !!s.gmail?.length, d: 'Correos de reclutadores y empresas, solo lectura. Se conecta y se lee en la Bandeja.' },
+    { id: 'otros', t: 'Otros archivos', estado: n(f.otros.length, 'archivo', 'archivos', 'Vacío'), ok: f.otros.length > 0, d: 'Lo que no calce en lo demás: capturas, presentaciones, chats exportados.' }
+  ]
+  const x = lista.find((l) => l.id === sel)!
   return (
-    <div className="max-w-4xl space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex-1">
-          <Titulo>Fuentes</Titulo>
-          <p className="text-xs text-muted-foreground">De aquí sale tu perfil. Todo queda en fuentes/ de tu carpeta de datos, que no se versiona ni se publica. Lo que se genere a partir de esto deja fuera lo sensible (cifras internas, datos de clientes, nombres de terceros).</p>
+    <div className="flex gap-5">
+      <div className="w-60 shrink-0 space-y-3">
+        <Titulo>Fuentes</Titulo>
+        <p className="text-xs text-muted-foreground">De aquí sale tu perfil.</p>
+        <div className="space-y-0.5">
+          {lista.map((l) => (
+            <button key={l.id} onClick={() => setSel(l.id)} className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm ${l.id === sel ? 'bg-accent' : 'hover:bg-accent/60'}`}>
+              <span className={`w-4 ${l.ok ? 'text-ok' : 'text-muted-foreground'}`}>{l.ok ? <Check className="size-4" /> : '·'}</span>
+              <span className="flex-1">
+                <span className="block">{l.t}</span>
+                <span className="block text-2xs text-muted-foreground">{l.estado}</span>
+              </span>
+            </button>
+          ))}
         </div>
-        <Boton tam="sm" onClick={() => hacer(() => api.claude('perfil', 'importar'))}><Bot /> Importar al perfil con Claude</Boton>
-        <Boton tam="sm" variante="outline" onClick={() => ir('perfil')}>Llenar a mano en Perfil</Boton>
+        <div className="space-y-2 rounded-md border border-border p-2 text-xs text-muted-foreground">
+          <p>Con tu material listo, pásalo al perfil:</p>
+          <Boton tam="xs" onClick={() => hacer(() => api.claude('perfil', 'importar'))}><Bot /> Importar con Claude</Boton>
+          <Boton tam="xs" variante="outline" onClick={() => ir('perfil')}>Llenar a mano en Perfil</Boton>
+        </div>
+        <p className="text-2xs text-muted-foreground">Todo queda en fuentes/ de tu carpeta de datos, que no se versiona ni se publica, y lo que se saque de aquí deja fuera lo sensible (cifras internas, clientes, terceros).</p>
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Tarjeta t="CV y documentos" d="Tu CV en PDF (el actual y los antiguos), certificados, cartas de recomendación, evaluaciones de desempeño.">
-          <ListaArchivos rutas={f.cv} hacer={hacer} vacio="Todavía no hay documentos." />
-          <Boton tam="xs" variante="outline" disabled={ocupado} onClick={() => hacer(() => api.agregarFuentes('cv'))}><Plus /> Agregar archivos</Boton>
-        </Tarjeta>
-        <Tarjeta t="LinkedIn" d={<>Pide tu copia en LinkedIn (Configuración › Privacidad de datos › Obtener una copia de tus datos; la «completa» trae más) y elige aquí el .zip. Se guardan solo los archivos sobre ti; mensajes, contactos e invitaciones se descartan.</>}>
-          {csv.length ? <p className="text-xs">{csv.map(([k, n]) => `${k} (${n})`).join(' · ')}</p> : <p className="text-xs text-muted-foreground">Sin importar.</p>}
-          <div className="flex flex-wrap gap-2">
-            <Boton tam="xs" variante="outline" onClick={() => api.abrir('https://www.linkedin.com/mypreferences/d/download-my-data')}><ExternalLink /> Pedir mi copia</Boton>
-            <Boton tam="xs" variante="outline" disabled={ocupado} onClick={() => hacer(() => api.importarLinkedin())}><Plus /> Importar .zip</Boton>
-            {csv.length > 0 && <Boton tam="xs" variante="ghost" onClick={() => hacer(() => api.abrirArchivo('fuentes/linkedin'))}><FolderOpen /> Carpeta</Boton>}
-          </div>
-        </Tarjeta>
-      </div>
-      <Git f={f} hacer={hacer} ocupado={ocupado} />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Tarjeta t="Notas y texto pegado" d="Lo que no es un archivo: tu perfil de otro portal, una evaluación, apuntes de lo que hiciste en un trabajo.">
-          <ListaArchivos rutas={f.notas} hacer={hacer} vacio="Sin notas." />
-          <input className="campo" placeholder="Título (p. ej. «Perfil en otro portal»)" value={nota.titulo} onChange={(e) => setNota({ ...nota, titulo: e.target.value })} />
-          <textarea className="campo" rows={4} placeholder="Pega el texto" value={nota.texto} onChange={(e) => setNota({ ...nota, texto: e.target.value })} />
-          <Boton tam="xs" variante="outline" disabled={!nota.titulo.trim() || !nota.texto.trim() || ocupado} onClick={() => hacer(() => api.guardarNota(nota.titulo, nota.texto).then((r) => (setNota({ titulo: '', texto: '' }), r)))}><Plus /> Guardar nota</Boton>
-        </Tarjeta>
-        <div className="space-y-4">
-          <Tarjeta t="Gmail" d="Correos de reclutadores y empresas (solo lectura). Se configura y se lee en la Bandeja.">
-            <p className="text-xs">{s.gmail?.length ? s.gmail.join(' · ') : 'Sin cuentas.'}</p>
-            <Boton tam="xs" variante="outline" onClick={() => ir('bandeja')}><Mail /> Ir a la Bandeja</Boton>
-          </Tarjeta>
-          <Tarjeta t="Otros archivos" d="Lo que no calce arriba: capturas, presentaciones, chats exportados.">
-            <ListaArchivos rutas={f.otros} hacer={hacer} vacio="Nada." />
-            <Boton tam="xs" variante="outline" disabled={ocupado} onClick={() => hacer(() => api.agregarFuentes('otros'))}><Plus /> Agregar archivos</Boton>
-          </Tarjeta>
+      <div className="min-w-0 max-w-3xl flex-1 space-y-4">
+        <div>
+          <Titulo>{x.t}</Titulo>
+          <p className="mt-1 text-xs text-muted-foreground">{x.d}</p>
+        </div>
+        <div className="space-y-4 rounded-lg border border-border bg-card p-4">
+          {sel === 'cv' && (
+            <>
+              <ListaArchivos rutas={f.cv} hacer={hacer} vacio="Todavía no hay documentos." />
+              <Boton tam="xs" variante="outline" disabled={ocupado} onClick={() => hacer(() => api.agregarFuentes('cv'))}><Plus /> Agregar archivos</Boton>
+            </>
+          )}
+          {sel === 'linkedin' && (
+            <>
+              <Bloque t="1 · Pide tu copia" d="En LinkedIn: Configuración › Privacidad de datos › Obtener una copia de tus datos. La «completa» trae más; llega por correo en minutos o hasta un día.">
+                <Boton tam="xs" variante="outline" onClick={() => api.abrir('https://www.linkedin.com/mypreferences/d/download-my-data')}><ExternalLink /> Abrir LinkedIn</Boton>
+              </Bloque>
+              <Bloque t="2 · Importa el .zip" d="Se guardan solo los archivos sobre ti; mensajes, contactos e invitaciones se descartan.">
+                <div className="flex flex-wrap gap-2">
+                  <Boton tam="xs" disabled={ocupado} onClick={() => hacer(() => api.importarLinkedin())}><Plus /> Importar .zip</Boton>
+                  {csv.length > 0 && <Boton tam="xs" variante="ghost" onClick={() => hacer(() => api.abrirArchivo('fuentes/linkedin'))}><FolderOpen /> Ver carpeta</Boton>}
+                </div>
+              </Bloque>
+              {csv.length > 0 && (
+                <Bloque t="Importado">
+                  <ul className="grid grid-cols-2 gap-x-4 text-sm">
+                    {csv.map(([k, c]) => <li key={k} className="flex justify-between"><span>{k}</span><span className="text-muted-foreground">{c}</span></li>)}
+                  </ul>
+                </Bloque>
+              )}
+            </>
+          )}
+          {sel === 'git' && <Git f={f} hacer={hacer} ocupado={ocupado} />}
+          {sel === 'notas' && (
+            <>
+              <ListaArchivos rutas={f.notas} hacer={hacer} vacio="Sin notas." />
+              <Bloque t="Nota nueva">
+                <input className="campo" placeholder="Título (p. ej. «Perfil en otro portal»)" value={nota.titulo} onChange={(e) => setNota({ ...nota, titulo: e.target.value })} />
+                <textarea className="campo" rows={6} placeholder="Pega el texto" value={nota.texto} onChange={(e) => setNota({ ...nota, texto: e.target.value })} />
+                <Boton tam="xs" disabled={!nota.titulo.trim() || !nota.texto.trim() || ocupado} onClick={() => hacer(() => api.guardarNota(nota.titulo, nota.texto).then((r) => (setNota({ titulo: '', texto: '' }), r)))}><Plus /> Guardar nota</Boton>
+              </Bloque>
+            </>
+          )}
+          {sel === 'gmail' && (
+            <>
+              <p className="text-sm">{s.gmail?.length ? s.gmail.join(' · ') : 'Sin cuentas conectadas.'}</p>
+              <Boton tam="xs" variante="outline" onClick={() => ir('bandeja')}><Mail /> {s.gmail?.length ? 'Ir a la Bandeja' : 'Conectar en la Bandeja'}</Boton>
+            </>
+          )}
+          {sel === 'otros' && (
+            <>
+              <ListaArchivos rutas={f.otros} hacer={hacer} vacio="Nada." />
+              <Boton tam="xs" variante="outline" disabled={ocupado} onClick={() => hacer(() => api.agregarFuentes('otros'))}><Plus /> Agregar archivos</Boton>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -1196,37 +1246,38 @@ function Git({ f, hacer, ocupado }: { f: NonNullable<Estado['fuentes']>; hacer: 
   const lista = ids.split(/\r?\n/).map((x) => x.trim()).filter(Boolean)
   const cambio = lista.join('\n') !== f.identidades.join('\n')
   return (
-    <Tarjeta t="Git: tus commits y PRs" d="Lo que construiste, sacado de tus repos (públicos y privados): periodo, volumen, lenguajes y mensajes de tus commits, y tus PRs o merge requests. Va a fuentes/git/ como resumen; no se copia código.">
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="space-y-2">
-          <div className="text-xs font-medium">Repos en este computador</div>
+    <>
+      <Bloque t="1 · Repos en este computador" d="Las carpetas donde tienes tus repos; se buscan hasta tres niveles adentro.">
+        {f.carpetas.length > 0 && (
           <ul className="space-y-0.5 text-sm">
             {f.carpetas.map((x) => (
               <li key={x} className="flex items-center gap-2">
+                <FolderOpen className="size-3.5 text-muted-foreground" />
                 <span className="min-w-0 flex-1 truncate" title={x}>{x}</span>
                 <button title="Quitar" className="text-muted-foreground hover:text-destructive" onClick={() => hacer(() => api.carpetaGit(x))}><X className="size-3.5" /></button>
               </li>
             ))}
           </ul>
-          <Boton tam="xs" variante="outline" onClick={() => hacer(() => api.carpetaGit())}><FolderOpen /> Agregar carpeta</Boton>
-          <Campo t="Tus correos o nombres de git (uno por línea)">
-            <textarea className="campo" rows={3} value={ids} onChange={(e) => setIds(e.target.value)} placeholder="tu.correo@empresa.com" />
-          </Campo>
-          <div className="flex flex-wrap gap-2">
-            <Boton tam="xs" variante="outline" disabled={!cambio} onClick={() => hacer(() => api.identidadesGit(lista))}>Guardar correos</Boton>
-            <Boton tam="xs" variante="ghost" disabled={!f.carpetas.length} onClick={() => void api.autoresGit().then(setSugeridos)}>¿Cuáles soy yo?</Boton>
-            <Boton tam="xs" disabled={ocupado || !f.carpetas.length || !f.identidades.length} onClick={() => hacer(() => api.leerGitLocal())}><RefreshCw className={ocupado ? 'animate-spin' : ''} /> Leer mis repos</Boton>
+        )}
+        <Boton tam="xs" variante="outline" onClick={() => hacer(() => api.carpetaGit())}><Plus /> Agregar carpeta</Boton>
+      </Bloque>
+      <Bloque t="2 · Quién eres en git" d="Tus correos o nombres de autor, uno por línea: solo se cuentan tus commits. «¿Cuáles soy yo?» muestra los autores de tus repos.">
+        <textarea className="campo" rows={3} value={ids} onChange={(e) => setIds(e.target.value)} placeholder="tu.correo@empresa.com" />
+        {sugeridos && (
+          <div className="flex flex-wrap gap-1">
+            {sugeridos.filter((x) => !lista.includes(x.autor)).map((x) => (
+              <button key={x.autor} className="rounded border border-border px-1.5 py-0.5 text-2xs hover:bg-accent" onClick={() => setIds([...lista, x.autor].join('\n'))}>+ {x.autor} ({x.commits})</button>
+            ))}
           </div>
-          {sugeridos && (
-            <div className="flex flex-wrap gap-1">
-              {sugeridos.filter((x) => !lista.includes(x.autor)).map((x) => (
-                <button key={x.autor} className="rounded border border-border px-1.5 py-0.5 text-2xs hover:bg-accent" onClick={() => setIds([...lista, x.autor].join('\n'))}>+ {x.autor} ({x.commits})</button>
-              ))}
-            </div>
-          )}
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Boton tam="xs" variante="outline" disabled={!f.carpetas.length} onClick={() => void api.autoresGit().then(setSugeridos)}>¿Cuáles soy yo?</Boton>
+          <Boton tam="xs" variante="outline" disabled={!cambio} onClick={() => hacer(() => api.identidadesGit(lista))}>Guardar</Boton>
+          <Boton tam="xs" disabled={ocupado || cambio || !f.carpetas.length || !f.identidades.length} onClick={() => hacer(() => api.leerGitLocal())}><RefreshCw className={ocupado ? 'animate-spin' : ''} /> Leer mis repos</Boton>
         </div>
-        <div className="space-y-2">
-          <div className="text-xs font-medium">Cuentas (incluye repos privados)</div>
+      </Bloque>
+      <Bloque t="3 · Cuentas de GitHub o GitLab (opcional)" d="Suma tus repos privados y tus PRs o merge requests. El token es de solo lectura y queda solo en este computador.">
+        {f.cuentas.length > 0 && (
           <ul className="space-y-0.5 text-sm">
             {f.cuentas.map((x) => (
               <li key={x.tipo + x.usuario} className="flex items-center gap-2">
@@ -1235,29 +1286,28 @@ function Git({ f, hacer, ocupado }: { f: NonNullable<Estado['fuentes']>; hacer: 
               </li>
             ))}
           </ul>
-          <div className="flex gap-2">
-            <select className="campo w-auto" value={c.tipo} onChange={(e) => setC({ ...c, tipo: e.target.value as 'github' | 'gitlab' })}>
-              <option value="github">GitHub</option>
-              <option value="gitlab">GitLab</option>
-            </select>
-            {c.tipo === 'gitlab' && <input className="campo" value={c.host} onChange={(e) => setC({ ...c, host: e.target.value })} />}
-          </div>
-          <p className="text-2xs text-muted-foreground">
-            {c.tipo === 'github' ? 'Token «fine-grained» de solo lectura: todos tus repos, permisos Contents y Metadata en «Read-only».' : 'Token personal con el permiso read_api.'} Queda solo en este computador.{' '}
-            <button className="underline" onClick={() => api.abrir(c.tipo === 'github' ? 'https://github.com/settings/personal-access-tokens/new' : `${c.host.replace(/\/$/, '')}/-/user_settings/personal_access_tokens`)}>Crear token</button>
-          </p>
+        )}
+        <div className="flex gap-2">
+          <select className="campo w-auto" value={c.tipo} onChange={(e) => setC({ ...c, tipo: e.target.value as 'github' | 'gitlab' })}>
+            <option value="github">GitHub</option>
+            <option value="gitlab">GitLab</option>
+          </select>
+          {c.tipo === 'gitlab' && <input className="campo" value={c.host} onChange={(e) => setC({ ...c, host: e.target.value })} />}
           <input className="campo font-mono" type="password" placeholder="Token" value={c.token} onChange={(e) => setC({ ...c, token: e.target.value })} />
-          <div className="flex flex-wrap gap-2">
-            <Boton tam="xs" disabled={!c.token.trim() || ocupado} onClick={() => hacer(() => api.conectarGit(c.tipo, c.host, c.token).then((r) => (setC({ ...c, token: '' }), r)))}><RefreshCw className={ocupado ? 'animate-spin' : ''} /> Conectar y leer</Boton>
-            {f.cuentas.length > 0 && <Boton tam="xs" variante="ghost" disabled={ocupado} onClick={() => hacer(() => api.leerCuentasGit())}>Volver a leer las cuentas</Boton>}
-          </div>
         </div>
-      </div>
-      <div className="space-y-1 border-t border-border pt-2">
-        <div className="text-xs font-medium">Resúmenes ({f.git.length})</div>
-        <ListaArchivos rutas={f.git} hacer={hacer} vacio="Todavía no hay resúmenes: agrega una carpeta y tus correos, o conecta una cuenta." />
-      </div>
-    </Tarjeta>
+        <p className="text-2xs text-muted-foreground">
+          {c.tipo === 'github' ? 'Token «fine-grained»: todos tus repos, permisos Contents y Metadata en «Read-only».' : 'Token personal con el permiso read_api.'}{' '}
+          <button className="underline" onClick={() => api.abrir(c.tipo === 'github' ? 'https://github.com/settings/personal-access-tokens/new' : `${c.host.replace(/\/$/, '')}/-/user_settings/personal_access_tokens`)}>Crear token</button>
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Boton tam="xs" disabled={!c.token.trim() || ocupado} onClick={() => hacer(() => api.conectarGit(c.tipo, c.host, c.token).then((r) => (setC({ ...c, token: '' }), r)))}><RefreshCw className={ocupado ? 'animate-spin' : ''} /> Conectar y leer</Boton>
+          {f.cuentas.length > 0 && <Boton tam="xs" variante="ghost" disabled={ocupado} onClick={() => hacer(() => api.leerCuentasGit())}>Volver a leer</Boton>}
+        </div>
+      </Bloque>
+      <Bloque t={`Resúmenes (${f.git.length})`}>
+        <ListaArchivos rutas={f.git} hacer={hacer} vacio="Aparecen aquí al leer tus repos o conectar una cuenta." />
+      </Bloque>
+    </>
   )
 }
 
