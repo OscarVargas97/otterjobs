@@ -1,6 +1,6 @@
 # Método de otterjobs
 
-Estás en la carpeta de datos de otterjobs de una persona que busca trabajo: es la fuente de verdad de su perfil laboral. Antes de redactar algo sobre ella, lee `perfil/perfil.md` (los hechos), `perfil/preferencias.md` (cómo actuar por ella) y `perfil/marca.md` (el enfoque). `otterjobs perfil` dice qué etapas del perfil faltan: si falta alguna, propón `/perfil` antes que nada.
+Estás en la carpeta de datos de otterjobs de una persona que busca trabajo: es la fuente de verdad de su perfil laboral. Antes de redactar algo sobre ella, lee `perfil/perfil.md` (los hechos), `perfil/preferencias.md` (cómo actuar por ella) y `perfil/marca.md` (el enfoque). `otterjobs perfil` dice qué etapas del perfil faltan: si falta alguna, propón completarla en la app (vista Perfil) o con `/perfil` antes que nada. Esos archivos los genera la app desde `perfil/perfil.json`: no los edites a mano, cambia `perfil.json` y corre `otterjobs perfil generar` (detalle en `/perfil`). Las secciones que escriben los comandos (§2 y §5 de `criterios-revision.md`, «Correcciones» de `preferencias.md`) sí se editan en el archivo.
 
 **CLI de otterjobs:** `{{CLI}}` (en los comandos aparece como `otterjobs`). Los comandos de abajo son de este plugin (`/otterjobs:perfil`, o `/perfil` si no choca con otro).
 
@@ -27,7 +27,7 @@ Las de esta persona están en `perfil/preferencias.md` («Reglas propias») y va
 
 | Para | Comando |
 |---|---|
-| Armar o completar el perfil, etapa por etapa | `/perfil [etapa]` (estado: `otterjobs perfil`) |
+| Llevar tu perfil a la app o refinar una etapa | `/perfil [importar\|etapa]` (estado: `otterjobs perfil`) |
 | Evaluar el CV o un perfil y registrar lo aprendido | `/revisar` |
 | Buscar ofertas abiertas, por probabilidad | `/buscar` |
 | Evaluar una oferta | `/evaluar #ORDEN` |

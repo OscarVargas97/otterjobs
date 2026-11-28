@@ -33,7 +33,11 @@ export function rutas(datos: string) {
   }
 }
 
-export function credencialesGmail(): Credenciales | null {
+const GMAIL = join(DIR_CONFIG, 'gmail.json')
+const leerGmail = (): Credenciales[] => (existsSync(GMAIL) ? JSON.parse(readFileSync(GMAIL, 'utf8')) : [])
+
+/** Las cuentas de Gmail: las de gmail.json y, si hay, la de GMAIL_USER/GMAIL_APP_PASSWORD (.env o variables). */
+export function cuentasGmail(): Credenciales[] {
   const env: Record<string, string> = {}
   if (existsSync(ENV))
     for (const l of readFileSync(ENV, 'utf8').split(/\r?\n/)) {
@@ -42,7 +46,23 @@ export function credencialesGmail(): Credenciales | null {
     }
   const user = process.env.GMAIL_USER ?? env.GMAIL_USER
   const pass = (process.env.GMAIL_APP_PASSWORD ?? env.GMAIL_APP_PASSWORD)?.replace(/\s/g, '')
-  return user && pass ? { user, pass } : null
+  const cuentas = leerGmail()
+  return user && pass && !cuentas.some((c) => c.user === user) ? [...cuentas, { user, pass }] : cuentas
 }
 
-export const RUTA_ENV = ENV
+/** Agrega la cuenta (o cambia su contraseña) en ~/.otterjobs/gmail.json, legible solo por el usuario. */
+export function guardarCuentaGmail(cred: Credenciales): void {
+  mkdirSync(DIR_CONFIG, { recursive: true })
+  writeFileSync(GMAIL, JSON.stringify([...leerGmail().filter((c) => c.user !== cred.user), cred], null, 2), { mode: 0o600 })
+}
+
+/** Quita la cuenta de gmail.json y, si era la del .env, sus dos líneas. */
+export function quitarCuentaGmail(user: string): void {
+  if (existsSync(GMAIL)) writeFileSync(GMAIL, JSON.stringify(leerGmail().filter((c) => c.user !== user), null, 2), { mode: 0o600 })
+  if (!existsSync(ENV)) return
+  const lineas = readFileSync(ENV, 'utf8').split(/\r?\n/)
+  const delEnv = lineas.some((l) => /^\s*GMAIL_USER\s*=/.test(l) && l.split('=')[1].trim().replace(/^"(.*)"$/, '$1') === user)
+  if (delEnv) writeFileSync(ENV, lineas.filter((l) => !/^\s*GMAIL_(USER|APP_PASSWORD)\s*=/.test(l)).join('\n'), { mode: 0o600 })
+}
+
+export const RUTA_GMAIL = GMAIL

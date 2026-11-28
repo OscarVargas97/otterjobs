@@ -1,6 +1,6 @@
 # otterjobs
 
-Sistema para buscar trabajo con un perfil y una marca personal que se mantienen al día: tablero de postulaciones, tareas con vencimiento, bandeja de Gmail y un método, guiado por Claude Code, para armar tu perfil a partir de tu material y usarlo en cada postulación, entrevista y mensaje.
+Sistema para buscar trabajo con un perfil y una marca personal que se mantienen al día: tablero de postulaciones, tareas con vencimiento, bandeja de Gmail y tu perfil armado con formularios en la app (con Claude Code para refinarlo desde tu material) y usarlo en cada postulación, entrevista y mensaje.
 
 Hay dos partes que viven separadas:
 
@@ -11,7 +11,7 @@ Lo determinista (tracker, historial, estado del perfil, lectura de Gmail) lo hac
 
 ## 1. Requisitos
 
-Probado en Windows 11. En Linux funciona la CLI; los botones de la app abren Claude en `x-terminal-emulator`. macOS no está probado.
+Probado en Windows 11. En Linux funciona la CLI; la app no está probada. macOS tampoco.
 
 | Qué | Para qué | Cómo instalarlo (Windows) |
 |---|---|---|
@@ -19,7 +19,6 @@ Probado en Windows 11. En Linux funciona la CLI; los botones de la app abren Cla
 | pnpm | Instala las dependencias | `npm install -g pnpm` |
 | Git | Clonar este repo y versionar tus datos. Claude Code en Windows también lo usa | `winget install Git.Git` |
 | Claude Code | El método (`/perfil`, `/postular`…). Necesita una cuenta de Claude con Claude Code (plan Pro o Max) | `npm install -g @anthropic-ai/claude-code`, luego `claude` una vez para iniciar sesión |
-| Windows Terminal | Los botones de la app abren Claude ahí | Viene con Windows 11; si no, `winget install Microsoft.WindowsTerminal` |
 | Microsoft Edge o Chrome | `otterjobs pdf`: el CV de HTML a PDF | Edge viene con Windows. Otra ruta: variable `OTTERJOBS_NAVEGADOR` |
 | Python 3 y `pypdf` (opcional) | La prueba de texto plano del CV en `/revisar` | `winget install Python.Python.3.13` y `pip install pypdf` |
 
@@ -56,9 +55,15 @@ git commit -m "inicio"
 
 ## 4. Armar tu perfil
 
-1. Deja en `datos/fuentes/` todo lo que tengas: CV antiguos, el PDF o la exportación de LinkedIn, certificados, cartas de recomendación, evaluaciones de desempeño, chats exportados (Discord, Slack, WhatsApp), notas sueltas.
-2. Revisa qué falta: `pnpm otterjobs perfil` (desde la carpeta de otterjobs).
-3. Abre Claude Code en tu carpeta de datos con el método de otterjobs (`cd datos` y `claude --plugin-dir ../metodo --settings ../metodo/settings.json`; el segundo deja fuera el `CLAUDE.md` de desarrollo de otterjobs) y escribe `/perfil` (o `/otterjobs:perfil` si otro plugin usa el mismo nombre). Los botones de la app lo abren así solos. Trabaja una etapa por vez, te pregunta lo que falta y escribe en tus archivos solo lo que está respaldado:
+La vista **Guía** de la app recorre todo esto en orden, con el estado de cada paso y un botón a donde se hace; la app abre ahí mientras falte lo indispensable.
+
+1. En **Fuentes**, deja todo tu material: CV antiguos y certificados, la exportación de LinkedIn (.zip; se guardan solo los archivos sobre ti), notas pegadas, y tus repos: tus correos de git y las carpetas donde los tienes, o una cuenta de GitHub o GitLab con un token de solo lectura. De git quedan resúmenes de tus commits y PRs, sin código. Todo va a `datos/fuentes/`, que no se versiona; los tokens quedan en `~/.otterjobs/git.json`.
+2. En la app, abre **Perfil**: las etapas con su estado y, en cada una, un formulario (empleos, logros con cifras, preferencias, el cuestionario de marca, respuestas a las señales de alerta). Al guardar, la app escribe los archivos de abajo y arma el CV (`cv/cv.html`, una columna, apto para ATS; «Exportar PDF» lo pasa a PDF con Edge o Chrome). «Guardar y marcar lista» cierra la etapa. Tus respuestas quedan en `perfil/perfil.json`.
+3. **Refinar con Claude** (opcional, en cada etapa): abre Claude Code con `/perfil <etapa>` en el panel flotante de Claude, abajo a la derecha. Lee tus `fuentes/`, propone logros mejor redactados, cifras que falten, opciones para la marca o la investigación del mercado, y escribe en `perfil.json` solo lo que apruebes. Lo ves al tiro en el formulario. La etapa la sigues marcando tú.
+4. **Si ya tenías un perfil escrito** (a mano o con Claude), la app marca esas etapas como «Escrito fuera de la app». «Importar con Claude» (`/perfil importar`) lo lleva a los formularios sin perder contenido. Si guardas una etapa sin importarla, el archivo se reemplaza y el anterior queda como `.anterior.md`.
+
+Sin la app: `pnpm otterjobs perfil` dice qué falta, y Claude Code en tu carpeta de datos (`cd datos` y `claude --plugin-dir ../metodo --settings ../metodo/settings.json`; el segundo deja fuera el `CLAUDE.md` de desarrollo de otterjobs) hace lo mismo con `/perfil` (o `/otterjobs:perfil`). Edita `perfil.json` y corre `otterjobs perfil generar`.
+
 
 | Etapa | Archivo | Qué queda |
 |---|---|---|
@@ -71,7 +76,7 @@ git commit -m "inicio"
 | `perfiles` | `perfil/perfiles.md` | LinkedIn y los demás portales, listos para pegar |
 | `revision` | `perfil/criterios-revision.md` §5 | Primera evaluación del CV con puntaje |
 
-Cada plantilla marca lo pendiente con `<!-- pendiente:ETAPA -->`; la etapa queda lista cuando apruebas el contenido y la marca se quita. `/perfil marca` (o cualquier etapa) vuelve a una etapa puntual.
+Cada archivo marca lo pendiente con `<!-- pendiente:ETAPA -->`; la marca se quita cuando das la etapa por lista. Los archivos generados dicen «Generado por otterjobs»: se editan en la app, no a mano. Las secciones que escriben los comandos (§2 y §5 de criterios, «Correcciones» de preferencias) se conservan al guardar.
 
 ## 5. Buscar trabajo
 
@@ -86,28 +91,19 @@ Con la app (`pnpm dev`) o desde Claude Code en tu carpeta de datos, con el plugi
 | `/mensaje` | Redacta la respuesta y la deja en el portapapeles |
 | `/correo` | Lee la bandeja y actualiza el tracker |
 | `/revisar` | Evalúa el CV y registra lo aprendido |
-| `/semana` | Ideas y el post semanal de LinkedIn |
+| `/semana` | Ideas y el post semanal de LinkedIn (también desde la vista LinkedIn) |
 
 Nada se envía ni se publica solo: los textos quedan en el portapapeles y tú los mandas. En la app, el panel de cada postulación tiene estos mismos botones.
 
-La CLI hace lo mismo que la app: `pnpm otterjobs ver`, `stats`, `tareas`, `historial N`, `set N campo=valor`, `add campo=valor`, `pendiente "texto"`, `hecha ID`, `perfil`, `pdf cv/cv.html`.
+La CLI hace lo mismo que la app: `pnpm otterjobs ver`, `stats`, `tareas`, `historial N`, `set N campo=valor`, `add campo=valor`, `pendiente "texto"`, `hecha ID`, `perfil` (`perfil generar` rehace los archivos desde `perfil.json`), `pdf cv/cv.html`.
 
 ## 6. Bandeja de Gmail (opcional)
 
-La app lee (solo lee) los correos de postulaciones por IMAP.
+La app lee (solo lee) los correos de postulaciones por IMAP. No usa IA para leerlos: un script guarda los que nombran una empresa de tu tracker o hablan de reclutamiento, y «Revisar con Claude» (`/correo`) los clasifica y actualiza tus postulaciones.
 
-1. Activa la [verificación en dos pasos](https://myaccount.google.com/signinoptions/twosv) en la cuenta donde te llegan los correos de reclutadores.
-2. Crea una [contraseña de aplicación](https://myaccount.google.com/apppasswords) con el nombre `otterjobs`. Google muestra 16 letras.
-3. Crea el archivo `~/.otterjobs/.env` (en Windows, `C:\Users\<tu usuario>\.otterjobs\.env`) con:
+En la app, abre **Bandeja**: te guía en tres pasos, con los enlaces de Google (verificación en dos pasos y [contraseña de aplicación](https://myaccount.google.com/apppasswords)). Al pegar la contraseña, prueba la conexión, la guarda en `~/.otterjobs/gmail.json` (fuera de los repos) y busca los correos del último mes. Si los correos de postulaciones te llegan a más de una cuenta, conéctalas todas («Agregar otra cuenta»): «Buscar correos nuevos» las lee todas y cada correo se abre en la cuenta donde llegó.
 
-   ```
-   GMAIL_USER=tu.correo@gmail.com
-   GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
-   ```
-
-4. Prueba con `pnpm otterjobs gmail --dias 7`.
-
-El archivo queda fuera de los repos. Para revocar el acceso, borra la contraseña de aplicación en Google.
+Sin la app: para una cuenta, crea `~/.otterjobs/.env` con `GMAIL_USER=…` y `GMAIL_APP_PASSWORD=…` y corre `pnpm otterjobs gmail --dias 7`. Para revocar el acceso, borra la contraseña de aplicación en Google.
 
 ## Desarrollo
 
