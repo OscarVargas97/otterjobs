@@ -101,3 +101,14 @@ test('formulario: el contexto va al CV y las notas internas solo a perfil.md', (
   assert.match(cv, /class="contexto">Distribuidora regional/)
   assert.doesNotMatch(cv, /informe de cierre/)
 })
+
+test('formulario: con resumen en inglés se genera también cv/cv-en.html', () => {
+  const d = datos()
+  guardarEtapa(d, 'hechos', hechos, false)
+  guardarEtapa(d, 'cv', { resumen: 'Analista con foco en cierres', competencias: 'SQL', resumenEn: 'Analyst focused on closing', experienciaEn: [{ empresa: 'Empresa Uno', cargo: 'Data Analyst', logros: 'Cut monthly close from 10 to 4 days' }] }, false)
+  const en = readFileSync(join(d, 'cv', 'cv-en.html'), 'utf8')
+  assert.match(en, /lang="?en/)
+  assert.match(en, /Data Analyst/)
+  assert.match(en, /Present/)
+  assert.doesNotMatch(en, /actual/)
+})

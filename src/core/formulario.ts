@@ -1,6 +1,6 @@
 // El perfil desde formularios de la app. perfil/perfil.json guarda las respuestas (las de la persona y las que importa
 // o refina Claude con /perfil) y de ahí salen, sin IA, los archivos que leen el método y la persona: perfil.md, preferencias.md, marca.md, perfiles.md, criterios-revision.md §1 y §3,
-// y cv/cv.html. Lo que escriben los comandos (Correcciones de preferencias.md, §2 y §5 de criterios) se conserva.
+// y cv/cv.html (y cv/cv-en.html si hay resumen en inglés). Lo que escriben los comandos (Correcciones de preferencias.md, §2 y §5 de criterios) se conserva.
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { ETAPAS, type Etapa } from './perfil.ts'
@@ -112,7 +112,13 @@ export const FORMULARIO: Record<Etapa, { intro: string; campos: Campo[] }> = {
     intro: 'El CV se arma con tu experiencia, educación e idiomas de «Hechos». Aquí va lo propio del CV. Al guardar se genera cv/cv.html; desde ahí, el PDF.',
     campos: [
       area('resumen', 'Resumen', '3 a 4 frases (50 a 85 palabras) que partan por el valor que entregas. Sin frases de marca ni clichés.'),
-      area('competencias', 'Competencias', 'Una por línea, con la redacción de las ofertas. Solo las que tienen un caso concreto que contar.')
+      area('competencias', 'Competencias', 'Una por línea, con la redacción de las ofertas. Solo las que tienen un caso concreto que contar.'),
+      texto('titularEn', 'En inglés · Titular', 'Opcional: con el resumen en inglés se genera también cv/cv-en.html (empresas, fechas y enlaces salen de «Hechos»)'),
+      area('resumenEn', 'En inglés · Resumen', 'Sin pronombres personales («Built…», no «I built…»)'),
+      area('competenciasEn', 'En inglés · Competencias', 'Una por línea'),
+      lista('experienciaEn', 'En inglés · Experiencia', [texto('empresa', 'Empresa', 'Como en «Hechos»'), texto('cargo', 'Cargo'), texto('jornada', 'Jornada', 'Full-time, part-time…'), area('contexto', 'Contexto'), area('logros', 'Logros', 'Uno por línea')], { ayuda: 'Una fila por cargo, en el mismo orden que la experiencia de «Hechos»' }),
+      area('educacionEn', 'En inglés · Educación y certificaciones', 'Una por línea; vacío usa las de «Hechos»'),
+      area('idiomasEn', 'En inglés · Idiomas', 'Uno por línea, p. ej. «Spanish: native»')
     ]
   },
   perfiles: {
@@ -183,7 +189,10 @@ export function guardarEtapa(datos: string, etapa: Etapa, valores: unknown, list
   const ve = (e: Etapa) => j.etapas[e] ?? {}
   const marca = (e: Etapa) => (j.listas.includes(e) ? '' : `\n<!-- pendiente:${e} — márcala lista en la app (Perfil) cuando la des por buena. -->\n`)
   const f = (e: Etapa) => join(datos, ARCHIVO[e])
-  const cv = () => reemplazar(f('cv'), htmlCv(ve('hechos'), ve('cv'), marca('cv')))
+  const cv = () => {
+    reemplazar(f('cv'), htmlCv(ve('hechos'), ve('cv'), marca('cv')))
+    if (s(ve('cv'), 'resumenEn')) reemplazar(join(datos, 'cv', 'cv-en.html'), htmlCv(...enIngles(ve('hechos'), ve('cv')), '', 'en'))
+  }
   if (etapa === 'hechos') {
     reemplazar(f('hechos'), mdHechos(ve('hechos'), marca('hechos')))
     if (existsSync(f('cv')) && readFileSync(f('cv'), 'utf8').includes(GENERADO)) cv() // el CV sale de los hechos
@@ -354,13 +363,33 @@ const mdAlertas = (v: Valores, marca: string) =>
 
 const esc = (x = '') => x.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
+const SECCIONES = {
+  es: { perfil: 'Perfil', competencias: 'Competencias', experiencia: 'Experiencia', proyectos: 'Proyectos', educacion: 'Educación', certificaciones: 'Certificaciones', idiomas: 'Idiomas', actual: 'actual' },
+  en: { perfil: 'Summary', competencias: 'Skills', experiencia: 'Experience', proyectos: 'Projects', educacion: 'Education', certificaciones: 'Certifications', idiomas: 'Languages', actual: 'Present' }
+}
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const month = (x = '') => (/^\d{4}-\d{2}$/.test(x) ? `${MONTHS[Number(x.slice(5)) - 1]} ${x.slice(0, 4)}` : x)
+
+/** Los hechos y el CV con lo escrito en inglés encima: cargo por cargo, en el mismo orden. */
+function enIngles(h: Valores, cv: Valores): [Valores, Valores] {
+  const en = filas(cv, 'experienciaEn')
+  const exp = filas(h, 'experiencia').map((e, i) => ({ ...e, ...Object.fromEntries(Object.entries(en[i] ?? {}).filter(([, x]) => x.trim())) }))
+  const linea = (k: string) => lineas(s(cv, k)).map((x) => ({ x }))
+  return [
+    { ...h, titular: s(cv, 'titularEn') || s(h, 'titular'), experiencia: exp, ...(s(cv, 'educacionEn') ? { educacion: [], certificaciones: [], educacionEn: linea('educacionEn') } : {}), ...(s(cv, 'idiomasEn') ? { idiomas: [], idiomasEn: linea('idiomasEn') } : {}) },
+    { resumen: s(cv, 'resumenEn'), competencias: s(cv, 'competenciasEn') }
+  ]
+}
+
 /** CV de una columna, apto para ATS (sin tablas ni columnas, fechas en la línea del cargo), imprimible en A4 o carta. */
-function htmlCv(h: Valores, cv: Valores, marca: string): string {
+function htmlCv(h: Valores, cv: Valores, marca: string, idioma: 'es' | 'en' = 'es'): string {
+  const t = SECCIONES[idioma]
+  const periodo = (e: Fila) => `${(idioma === 'en' ? month : mes)(e.desde)} – ${e.hasta ? (idioma === 'en' ? month : mes)(e.hasta) : t.actual}`
   const sec = (t: string, cuerpo: string) => (cuerpo.trim() ? `<section><h2>${t}</h2>${cuerpo}</section>` : '')
   const ul = (xs: string[]) => (xs.length ? `<ul>${xs.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '')
   const contacto = [s(h, 'ciudad'), s(h, 'correo'), s(h, 'telefono'), ...lineas(s(h, 'enlaces'))].filter(Boolean).map(esc).join(' · ')
   return `<!doctype html>
-<html lang="es">
+<html lang="${idioma}">
 <head>
 <meta charset="utf-8">
 ${AVISO}${marca ? `\n${marca.trim()}` : ''}
@@ -384,13 +413,13 @@ ${AVISO}${marca ? `\n${marca.trim()}` : ''}
 <h1>${esc(s(h, 'nombre'))}</h1>
 ${s(h, 'titular') ? `<p class="titular">${esc(s(h, 'titular'))}</p>` : ''}
 <p class="contacto">${contacto}</p>
-${sec('Perfil', s(cv, 'resumen') ? `<p>${esc(s(cv, 'resumen'))}</p>` : '')}
-${sec('Competencias', lineas(s(cv, 'competencias')).length ? `<p>${lineas(s(cv, 'competencias')).map(esc).join(' · ')}</p>` : '')}
-${sec('Experiencia', filas(h, 'experiencia').map((e) => `<div class="cargo"><div class="linea"><span><b>${esc(e.cargo)}</b> · <b>${esc(e.empresa)}</b>${e.jornada ? ` (${esc(e.jornada)})` : ''}</span><span>${esc(periodo(e))}</span></div>${e.contexto?.trim() ? `<p class="contexto">${esc(e.contexto.trim())}</p>` : ''}${ul(lineas(e.logros ?? ''))}</div>`).join('\n'))}
-${sec('Proyectos', filas(h, 'proyectos').map((p) => `<div class="cargo"><b>${esc(p.nombre)}</b>${p.enlace ? ` · ${esc(p.enlace)}` : ''}<p>${esc(p.descripcion)}</p></div>`).join('\n'))}
-${sec('Educación', ul(filas(h, 'educacion').map((e) => `${e.titulo} — ${e.institucion}${e.anio ? `, ${e.anio}` : ''}`)))}
-${sec('Certificaciones', ul(filas(h, 'certificaciones').map((c) => `${c.nombre}${c.emisor ? ` — ${c.emisor}` : ''}${c.anio ? `, ${c.anio}` : ''}`)))}
-${sec('Idiomas', ul(filas(h, 'idiomas').map((i) => `${i.idioma}${i.nivel ? `: ${i.nivel}` : ''}`)))}
+${sec(t.perfil, s(cv, 'resumen') ? `<p>${esc(s(cv, 'resumen'))}</p>` : '')}
+${sec(t.competencias, lineas(s(cv, 'competencias')).length ? `<p>${lineas(s(cv, 'competencias')).map(esc).join(' · ')}</p>` : '')}
+${sec(t.experiencia, filas(h, 'experiencia').map((e) => `<div class="cargo"><div class="linea"><span><b>${esc(e.cargo)}</b> · <b>${esc(e.empresa)}</b>${e.jornada ? ` (${esc(e.jornada)})` : ''}</span><span>${esc(periodo(e))}</span></div>${e.contexto?.trim() ? `<p class="contexto">${esc(e.contexto.trim())}</p>` : ''}${ul(lineas(e.logros ?? ''))}</div>`).join('\n'))}
+${sec(t.proyectos, filas(h, 'proyectos').map((p) => `<div class="cargo"><b>${esc(p.nombre)}</b>${p.enlace ? ` · ${esc(p.enlace)}` : ''}<p>${esc(p.descripcion)}</p></div>`).join('\n'))}
+${sec(t.educacion, ul([...filas(h, 'educacion').map((e) => `${e.titulo} — ${e.institucion}${e.anio ? `, ${e.anio}` : ''}`), ...filas(h, 'educacionEn').map((e) => e.x)]))}
+${sec(t.certificaciones, ul(filas(h, 'certificaciones').map((c) => `${c.nombre}${c.emisor ? ` — ${c.emisor}` : ''}${c.anio ? `, ${c.anio}` : ''}`)))}
+${sec(t.idiomas, ul([...filas(h, 'idiomas').map((i) => `${i.idioma}${i.nivel ? `: ${i.nivel}` : ''}`), ...filas(h, 'idiomasEn').map((i) => i.x)]))}
 </body>
 </html>
 `.replace(/\n{2,}/g, '\n')
