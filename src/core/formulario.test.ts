@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { alertasSugeridas, etapasManuales, guardarEtapa, leerPerfilJson, regenerar, registrarEvaluacion, revisarCv, seccion } from './formulario.ts'
 import { crearDatos } from './plantilla.ts'
-import { estadoPerfil } from './perfil.ts'
+import { ETAPAS, estadoPerfil } from './perfil.ts'
 
 const hechos = {
   nombre: 'Ana Pérez',
@@ -111,4 +111,8 @@ test('formulario: con resumen en inglés se genera también cv/cv-en.html', () =
   assert.match(en, /Data Analyst/)
   assert.match(en, /Present/)
   assert.doesNotMatch(en, /actual/)
+})
+
+test('perfil: cada etapa sale solo de etapas anteriores', () => {
+  ETAPAS.forEach((e, i) => e.usa.forEach((u) => assert.ok(ETAPAS.findIndex((x) => x.id === u) < i, `${e.id} usa ${u}`)))
 })

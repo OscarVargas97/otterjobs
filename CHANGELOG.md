@@ -2,6 +2,19 @@
 
 Lo que trae cada versión de otterjobs, lo más nuevo arriba.
 
+## 0.1.2 · Menú agrupado y perfil más liviano
+
+`fix/fuentes-orden`
+
+### Nuevo
+- **Menú lateral plegable y agrupado**: día a día, búsqueda, perfil y configuración.
+- **Etapas del perfil conectadas**: cada etapa muestra de qué etapas sale y dónde se usa, y avisa si falta una previa.
+
+### Arreglos
+- **Fuentes**: la lista muestra el estado de cada fuente y se ve el detalle de una a la vez; git se configura en pasos.
+- **Perfil**: menos información en pantalla: los pasos aparecen solo si falta algo, las listas van plegadas y los campos en dos columnas.
+- En pantallas anchas el contenido queda centrado con un ancho máximo (el tablero sigue a todo el ancho).
+
 ## 0.1.1 · Perfil en la app, fuentes y guía
 
 `feat/plantilla`, `feat/terminal`
