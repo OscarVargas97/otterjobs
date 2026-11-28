@@ -2,11 +2,18 @@
 
 Lo que trae cada versión de otterjobs, lo más nuevo arriba.
 
-## Sin publicar
+## 0.1.1 · Perfil en la app, fuentes y guía
 
 `feat/plantilla`, `feat/terminal`
 
 ### Nuevo
+- **Guía**: recorre todo lo que hay que configurar, en orden (tu material, tu perfil, postular, LinkedIn), con el estado de cada paso y un botón que lleva a donde se hace. La app abre en la Guía mientras falte lo indispensable.
+- **Fuentes**: sección propia para el material del perfil. CV y documentos, exportación de LinkedIn (se guardan solo los archivos sobre ti; mensajes y contactos se descartan), notas pegadas, otros archivos y git: tus correos de autor y carpetas de repos locales, o una cuenta de GitHub o GitLab con token de solo lectura (incluye privados). De git quedan resúmenes de tus commits y PRs en `fuentes/git/`, sin código ni credenciales; los tokens quedan en `~/.otterjobs/git.json`.
+- **Perfil por pasos**: arriba de Perfil, los cinco pasos (fuentes, importar, etapas, CV y perfiles, revisión) con el que sigue resaltado.
+- **CV en inglés**: campos en inglés en la etapa CV (titular, resumen, competencias, experiencia, educación e idiomas) que generan `cv/cv-en.html` y su PDF.
+- **Mercado**: vista con los barridos de ofertas y reportes, editables en la app; «Buscar ofertas con Claude» o un barrido a mano.
+- **Aprendizajes**: los archivos de cada postulación se editan en la app, y «Pasar aprendizajes al perfil» abre `/perfil aprendizajes`, que lleva lo aprendido en entrevistas a las historias, alertas y preferencias.
+- **Posts publicados** con su enlace y métricas.
 - **Perfil en la app**: la vista Perfil arma cada etapa con formularios (empleos, logros, preferencias, cuestionario de marca, alertas, perfiles y registro de evaluaciones). Escribe los archivos del perfil, arma el CV de una columna y lo exporta a PDF. Sugiere las señales de alerta que se ven en tus fechas y revisa lo medible del CV (largo del resumen, logros con cifras, verbos repetidos). Claude queda para refinar cada etapa o importar un perfil ya escrito (`/perfil importar`), editando `perfil/perfil.json`. `otterjobs perfil generar` rehace los archivos.
 - **Mis CV**: en Perfil, todos los CV en un lugar (los base y el adaptado de cada postulación), con su PDF. La ficha de cada postulación también muestra su CV y su ficha, y en cada etapa «Ver archivo» muestra lo que se generó.
 - **Claude llena las etapas vacías**: «Llenar con Claude» arma la etapa desde fuentes/ y las demás etapas, y pregunta solo lo que falte.

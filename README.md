@@ -55,7 +55,9 @@ git commit -m "inicio"
 
 ## 4. Armar tu perfil
 
-1. Deja en `datos/fuentes/` todo lo que tengas: CV antiguos, el PDF o la exportación de LinkedIn, certificados, cartas de recomendación, evaluaciones de desempeño, chats exportados (Discord, Slack, WhatsApp), notas sueltas.
+La vista **Guía** de la app recorre todo esto en orden, con el estado de cada paso y un botón a donde se hace; la app abre ahí mientras falte lo indispensable.
+
+1. En **Fuentes**, deja todo tu material: CV antiguos y certificados, la exportación de LinkedIn (.zip; se guardan solo los archivos sobre ti), notas pegadas, y tus repos: tus correos de git y las carpetas donde los tienes, o una cuenta de GitHub o GitLab con un token de solo lectura. De git quedan resúmenes de tus commits y PRs, sin código. Todo va a `datos/fuentes/`, que no se versiona; los tokens quedan en `~/.otterjobs/git.json`.
 2. En la app, abre **Perfil**: las etapas con su estado y, en cada una, un formulario (empleos, logros con cifras, preferencias, el cuestionario de marca, respuestas a las señales de alerta). Al guardar, la app escribe los archivos de abajo y arma el CV (`cv/cv.html`, una columna, apto para ATS; «Exportar PDF» lo pasa a PDF con Edge o Chrome). «Guardar y marcar lista» cierra la etapa. Tus respuestas quedan en `perfil/perfil.json`.
 3. **Refinar con Claude** (opcional, en cada etapa): abre Claude Code con `/perfil <etapa>` en el panel flotante de Claude, abajo a la derecha. Lee tus `fuentes/`, propone logros mejor redactados, cifras que falten, opciones para la marca o la investigación del mercado, y escribe en `perfil.json` solo lo que apruebes. Lo ves al tiro en el formulario. La etapa la sigues marcando tú.
 4. **Si ya tenías un perfil escrito** (a mano o con Claude), la app marca esas etapas como «Escrito fuera de la app». «Importar con Claude» (`/perfil importar`) lo lleva a los formularios sin perder contenido. Si guardas una etapa sin importarla, el archivo se reemplaza y el anterior queda como `.anterior.md`.
