@@ -1,15 +1,15 @@
 // LinkedIn: los posts y el banco de ideas son archivos de la carpeta de datos (linkedin/), legibles a mano y por Claude (/semana).
-// - linkedin/posts/AAAA-MM-DD-slug/post.md: frontmatter (estado, pilar, fecha, imagen) y el texto bajo «## Post».
+// - linkedin/posts/AAAA-MM-DD-slug/post.md: frontmatter (estado, pilar, fecha, imagen y, ya publicado, enlace y metricas) y el texto bajo «## Post».
 // - linkedin/ideas.md: una tabla | Fecha | Idea | Fuente | Pilar | Estado |.
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 export const ESTADOS_POST = ['borrador', 'aprobado', 'publicado'] as const
 export const ESTADOS_IDEA = ['sin usar', 'en borrador', 'aprobado', 'publicado', 'descartada'] as const
-export type Post = { slug: string; estado: string; pilar: string; fecha: string; imagen: string; texto: string; archivos: string[] }
+export type Post = { slug: string; estado: string; pilar: string; fecha: string; imagen: string; enlace: string; metricas: string; texto: string; archivos: string[] }
 export type Idea = { fecha: string; idea: string; fuente: string; pilar: string; estado: string }
 
-const CAMPOS_POST = ['estado', 'pilar', 'fecha', 'imagen'] as const
+const CAMPOS_POST = ['estado', 'pilar', 'fecha', 'imagen', 'enlace', 'metricas'] as const
 const dirPosts = (datos: string) => join(datos, 'linkedin', 'posts')
 const archivoIdeas = (datos: string) => join(datos, 'linkedin', 'ideas.md')
 const CABECERA_IDEAS = '# Banco de ideas\n\n| Fecha | Idea | Fuente | Pilar | Estado |\n|---|---|---|---|---|\n'
@@ -41,7 +41,7 @@ export function leerPosts(datos: string): Post[] {
     .map((x) => {
       const { meta, cuerpo } = partir(readFileSync(join(d, x.name, 'post.md'), 'utf8'))
       const archivos = readdirSync(join(d, x.name)).filter((f) => f !== 'post.md')
-      return { slug: x.name, estado: meta.estado || 'borrador', pilar: meta.pilar ?? '', fecha: meta.fecha || x.name.slice(0, 10), imagen: meta.imagen ?? '', texto: textoPost(cuerpo), archivos }
+      return { slug: x.name, estado: meta.estado || 'borrador', pilar: meta.pilar ?? '', fecha: meta.fecha || x.name.slice(0, 10), imagen: meta.imagen ?? '', enlace: meta.enlace ?? '', metricas: meta.metricas ?? '', texto: textoPost(cuerpo), archivos }
     })
     .sort((a, b) => b.slug.localeCompare(a.slug))
 }
