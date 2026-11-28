@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { agregarIdea, estadoIdea, guardarPost, leerIdeas, leerPosts, nuevoPost } from './linkedin.ts'
+import { agregarIdea, estadoIdea, guardarPost, guardarVoz, leerIdeas, leerPosts, leerVoz, nuevoPost } from './linkedin.ts'
 
 test('linkedin: guardar un post cambia frontmatter y texto, y conserva las otras secciones', () => {
   const d = mkdtempSync(join(tmpdir(), 'otterjobs-li-'))
@@ -35,4 +35,16 @@ test('linkedin: post nuevo e ideas en la tabla', () => {
     { fecha: '2026-02-01', idea: 'Cierre contable | en 4 días', fuente: 'Experiencia propia', pilar: 'Oficio', estado: 'en borrador' },
     { fecha: '2026-02-02', idea: 'Otra idea', fuente: '', pilar: '', estado: 'sin usar' }
   ])
+})
+
+test('linkedin: la voz se guarda por campos y conserva las secciones que no son campos', () => {
+  const d = mkdtempSync(join(tmpdir(), 'otterjobs-li-'))
+  mkdirSync(join(d, 'linkedin'))
+  writeFileSync(join(d, 'linkedin', 'voz.md'), '# Voz\n\nIntro.\n\n## Lo que evita\n\n- Emojis\n\n## Historial\n\nalgo\n')
+  assert.deepEqual(leerVoz(d), { evito: '- Emojis' })
+  guardarVoz(d, { textos: 'Hola, te escribo por…', evito: '- Emojis\n- Cierres motivacionales' })
+  assert.deepEqual(leerVoz(d), { textos: 'Hola, te escribo por…', como: '', palabras: '', evito: '- Emojis\n- Cierres motivacionales' })
+  const md = readFileSync(join(d, 'linkedin', 'voz.md'), 'utf8')
+  assert.match(md, /^# Voz\n\nIntro\.\n\n## Textos que escribí yo/)
+  assert.match(md, /## Historial\n\nalgo\n$/)
 })

@@ -7,7 +7,7 @@ import { carpetaDatos, cuentasGmail, guardarCarpetaDatos, guardarCuentaGmail, qu
 import { enlaceGmail, escanear, leerInbox, marcarRevisado, probarGmail } from '../core/gmail.ts'
 import { usar, type Db } from '../core/db.ts'
 import { alertasSugeridas, etapasManuales, FORMULARIO, guardarEtapa, leerPerfilJson, registrarEvaluacion, revisarCv } from '../core/formulario.ts'
-import { agregarIdea, estadoIdea, guardarPost, leerIdeas, leerPosts, nuevoPost } from '../core/linkedin.ts'
+import { agregarIdea, CAMPOS_VOZ, estadoIdea, guardarPost, guardarVoz, leerIdeas, leerPosts, leerVoz, nuevoPost } from '../core/linkedin.ts'
 import { aPdf } from '../core/pdf.ts'
 import { estadoPerfil, ETAPAS, type Etapa } from '../core/perfil.ts'
 import { agregarPendiente, leerPendientes, marcarPendiente } from '../core/pendientes.ts'
@@ -59,7 +59,7 @@ function linkedin(datos: string) {
   const marca = leerPerfilJson(datos).etapas.marca?.pilares
   // los pilares de la marca, más los que ya se usaron en posts e ideas
   const pilares = [...(typeof marca === 'string' ? marca.split(/\r?\n/).map((l) => l.replace(/^\s*[-*\d.]+\s*/, '').trim()) : []), ...posts.map((p) => p.pilar), ...ideas.map((i) => i.pilar)]
-  return { posts, ideas, pilares: [...new Set(pilares.filter(Boolean))], voz: existsSync(join(datos, 'linkedin', 'voz.md')) }
+  return { posts, ideas, pilares: [...new Set(pilares.filter(Boolean))], voz: leerVoz(datos), camposVoz: CAMPOS_VOZ.map(({ id, titulo, ayuda }) => ({ id, titulo, ayuda })) }
 }
 
 /** Todos los CV: los base de cv/ y los adaptados en la carpeta de cada postulación, con su PDF si lo hay. */
@@ -172,6 +172,7 @@ manejar('guardarEtapa', (etapa, valores, lista) => {
 manejar('guardarPost', (slug, cambios) => guardarPost(datosOk().datos, slug, cambios))
 manejar('nuevoPost', (titulo, pilar) => void nuevoPost(datosOk().datos, titulo, isoHoy(), typeof pilar === 'string' ? pilar : ''))
 manejar('agregarIdea', (v) => agregarIdea(datosOk().datos, v, isoHoy()))
+manejar('guardarVoz', (v) => guardarVoz(datosOk().datos, v))
 manejar('estadoIdea', (i, estado) => estadoIdea(datosOk().datos, i, estado))
 manejar('pdfCv', () => {
   const r = datosOk()

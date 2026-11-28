@@ -22,6 +22,7 @@ const api = {
   nuevoPost: llamar('nuevoPost'),
   agregarIdea: llamar('agregarIdea'),
   estadoIdea: llamar('estadoIdea'),
+  guardarVoz: llamar('guardarVoz'),
   abrirArchivo: llamar('abrirArchivo'),
   archivos: llamar('archivos'),
   leerArchivo: llamar('leerArchivo'),

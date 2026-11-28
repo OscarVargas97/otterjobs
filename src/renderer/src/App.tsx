@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ArrowLeft, Bot, CalendarClock, Check, ChevronRight, ExternalLink, FileText, FolderOpen, Inbox, KanbanSquare, Mail, Megaphone, Plus, RefreshCw, SquareTerminal, UserRound, X } from 'lucide-react'
 import type { Correo } from '../../core/gmail.ts'
 import type { Pendiente } from '../../core/pendientes.ts'
@@ -29,12 +29,13 @@ type Estado = {
     posts: { slug: string; estado: string; pilar: string; fecha: string; imagen: string; texto: string; archivos: string[] }[]
     ideas: { fecha: string; idea: string; fuente: string; pilar: string; estado: string }[]
     pilares: string[]
-    voz: boolean
+    voz: Record<string, string>
+    camposVoz: { id: string; titulo: string; ayuda: string }[]
   }
   version?: string
 }
 type Api = {
-  [k in 'cargar' | 'elegirDatos' | 'actualizar' | 'agregar' | 'marcarPendiente' | 'nuevoPendiente' | 'escanear' | 'configurarGmail' | 'quitarGmail' | 'revisado' | 'claude' | 'guardarEtapa' | 'pdfCv' | 'abrirArchivo' | 'guardarPost' | 'nuevoPost' | 'agregarIdea' | 'estadoIdea']: (...a: unknown[]) => Promise<Estado>
+  [k in 'cargar' | 'elegirDatos' | 'actualizar' | 'agregar' | 'marcarPendiente' | 'nuevoPendiente' | 'escanear' | 'configurarGmail' | 'quitarGmail' | 'revisado' | 'claude' | 'guardarEtapa' | 'pdfCv' | 'abrirArchivo' | 'guardarPost' | 'nuevoPost' | 'agregarIdea' | 'estadoIdea' | 'guardarVoz']: (...a: unknown[]) => Promise<Estado>
 } & { historial: (orden: string) => Promise<Evento[]>; archivos: (carpeta: string) => Promise<string[]>; leerArchivo: (ruta: string) => Promise<string | null>; abrir: (url: string) => void; alCambiar: (cb: (e: Estado) => void) => () => void }
 const api = (window as unknown as { api: Api }).api
 
@@ -771,16 +772,7 @@ function Linkedin({ li, hacer, ocupado }: { li: Li; hacer: Hacer; ocupado: boole
       </div>
       {pestana === 'posts' && <Posts li={li} hacer={hacer} ocupado={ocupado} />}
       {pestana === 'ideas' && <Ideas li={li} hacer={hacer} ocupado={ocupado} />}
-      {pestana === 'voz' &&
-        (li.voz ? (
-          <div className="max-w-3xl space-y-2">
-            <p className="text-xs text-muted-foreground">Cómo escribes. Claude la lee antes de cada borrador y anota aquí lo que le corriges.</p>
-            <Visor key={JSON.stringify(li.posts.length)} ruta="linkedin/voz.md" alto="h-[65vh]" />
-            <Boton tam="xs" variante="outline" onClick={() => hacer(() => api.abrirArchivo('linkedin/voz.md'))}><ExternalLink /> Editar el archivo</Boton>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">Todavía no hay linkedin/voz.md. Claude lo arma en la primera sesión de /semana con textos que hayas escrito tú.</p>
-        ))}
+      {pestana === 'voz' && <Voz key={JSON.stringify(li.voz)} li={li} hacer={hacer} ocupado={ocupado} />}
     </div>
   )
 }
@@ -866,21 +858,26 @@ function EditorPost({ p, pilares, hacer, ocupado }: { p: PostLi; pilares: string
 function Ideas({ li, hacer, ocupado }: { li: Li; hacer: Hacer; ocupado: boolean }) {
   const [v, setV] = useState({ idea: '', fuente: '', pilar: '' })
   const set = (k: keyof typeof v) => (e: { target: { value: string } }) => setV({ ...v, [k]: e.target.value })
-  const agregar = () => v.idea.trim() && hacer(async () => {
+  const idea = useRef<HTMLInputElement>(null)
+  const [falta, setFalta] = useState(false)
+  const agregar = () => {
+    if (!v.idea.trim()) return setFalta(true), idea.current?.focus()
+    hacer(async () => {
     const r = await api.agregarIdea(v)
-    setV({ idea: '', fuente: '', pilar: '' })
-    return r
-  })
+      setV({ idea: '', fuente: '', pilar: '' })
+      return r
+    })
+  }
   return (
     <div className="max-w-5xl space-y-3">
       <div className="flex flex-wrap gap-2">
-        <input className="campo flex-[3]" placeholder="Idea: qué te pasó o qué opinas" value={v.idea} onChange={set('idea')} onKeyDown={(e) => e.key === 'Enter' && agregar()} />
+        <input ref={idea} className={`campo flex-[3] ${falta && !v.idea.trim() ? 'border-destructive' : ''}`} placeholder="Idea: qué te pasó o qué opinas" value={v.idea} onChange={set('idea')} onKeyDown={(e) => e.key === 'Enter' && agregar()} />
         <input className="campo flex-[2]" placeholder="Fuente (experiencia propia, una noticia…)" value={v.fuente} onChange={set('fuente')} />
         <select className="campo flex-1" value={v.pilar} onChange={set('pilar')}>
           <option value="">Pilar</option>
           {li.pilares.map((x) => <option key={x}>{x}</option>)}
         </select>
-        <Boton variante="outline" disabled={!v.idea.trim() || ocupado} onClick={agregar}><Plus /> Agregar</Boton>
+        <Boton variante="outline" disabled={ocupado} onClick={agregar}><Plus /> Agregar</Boton>
       </div>
       {li.ideas.length ? (
         <table className="w-full text-sm">
@@ -909,6 +906,31 @@ function Ideas({ li, hacer, ocupado }: { li: Li; hacer: Hacer; ocupado: boolean 
       ) : (
         <p className="text-sm text-muted-foreground">El banco está vacío. Anota lo que te pase en la semana, o deja que Claude busque temas en /semana.</p>
       )}
+    </div>
+  )
+}
+
+/** La voz es de quien usa la app: la escribe aquí con sus propios textos, o la arma con Claude (/semana voz). */
+function Voz({ li, hacer, ocupado }: { li: Li; hacer: Hacer; ocupado: boolean }) {
+  const [v, setV] = useState(li.voz)
+  const cambio = li.camposVoz.some((c) => (v[c.id] ?? '') !== (li.voz[c.id] ?? ''))
+  return (
+    <div className="max-w-3xl space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="flex-1 text-sm text-muted-foreground">Tu forma de escribir, para que los posts suenen a ti. Claude la lee antes de cada borrador y anota lo que le corriges.</p>
+        <Boton tam="xs" onClick={() => hacer(() => api.claude('semana', 'voz'))}><Bot /> {Object.values(li.voz).some(Boolean) ? 'Afinar mi voz con Claude' : 'Armar mi voz con Claude'}</Boton>
+      </div>
+      {li.camposVoz.map((c) => (
+        <label key={c.id} className="block space-y-1">
+          <span className="text-sm font-medium">{c.titulo}</span>
+          <span className="block text-xs text-muted-foreground">{c.ayuda}</span>
+          <textarea className={`campo leading-relaxed ${c.id === 'textos' ? 'min-h-40' : 'min-h-24'}`} value={v[c.id] ?? ''} onChange={(e) => setV({ ...v, [c.id]: e.target.value })} />
+        </label>
+      ))}
+      <div className="flex gap-2">
+        <Boton disabled={!cambio || ocupado} onClick={() => hacer(() => api.guardarVoz(v))}>Guardar</Boton>
+        <Boton variante="ghost" onClick={() => hacer(() => api.abrirArchivo('linkedin/voz.md'))}><ExternalLink /> Ver el archivo</Boton>
+      </div>
     </div>
   )
 }

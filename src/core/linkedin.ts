@@ -136,3 +136,43 @@ export function estadoIdea(datos: string, i: unknown, estado: unknown): void {
   ls[fila[1]] = `| ${cs.map(celda).join(' | ')} |`
   writeFileSync(f, ls.join('\n'))
 }
+
+// La voz (linkedin/voz.md) se arma con la persona: sus propios textos y lo que corrige. Cada campo es una sección «## »;
+// una sección se reconoce por su título, y las que no calzan con ningún campo se conservan tal cual.
+export const CAMPOS_VOZ = [
+  { id: 'textos', titulo: 'Textos que escribí yo', ayuda: 'Pega 2 o 3 textos tuyos sin pasar por una IA: un mensaje, el «Acerca de» de LinkedIn, una respuesta larga. Es la base de todo lo demás.', re: /textos|muestras|ejemplos/i },
+  { id: 'como', titulo: 'Cómo escribo', ayuda: 'Largo de las frases, tono, cuánto opinas, cómo cierras.', re: /c[oó]mo escrib|ya se sabe|tono/i },
+  { id: 'palabras', titulo: 'Palabras y giros que uso', ayuda: 'Expresiones tuyas, modismos de tu país, cómo saludas o te despides.', re: /palabras|giros/i },
+  { id: 'evito', titulo: 'Lo que evito', ayuda: 'Lo que no suena a ti. Claude anota aquí lo que le corriges en cada borrador.', re: /evit/i }
+] as const
+const archivoVoz = (datos: string) => join(datos, 'linkedin', 'voz.md')
+
+function seccionesVoz(datos: string) {
+  const md = existsSync(archivoVoz(datos)) ? readFileSync(archivoVoz(datos), 'utf8').replace(/\r\n/g, '\n') : ''
+  const [intro, ...partes] = md.split(/^## /m)
+  const valores: Record<string, string> = {}
+  const otras: string[] = []
+  for (const p of partes) {
+    const [titulo, ...resto] = p.split('\n')
+    const texto = resto.join('\n').trim().replace(/^-\s*$/gm, '').trim() // «- » vacío de la plantilla
+    const c = CAMPOS_VOZ.find((c) => c.re.test(titulo) && !(c.id in valores))
+    if (c) valores[c.id] = texto
+    else otras.push(`## ${p.trim()}`)
+  }
+  return { intro: intro.trim(), valores, otras }
+}
+
+export const leerVoz = (datos: string): Record<string, string> => seccionesVoz(datos).valores
+
+export function guardarVoz(datos: string, v: unknown): void {
+  if (typeof v !== 'object' || !v) throw new Error('dato inválido')
+  const c = v as Record<string, unknown>
+  const { intro, valores, otras } = seccionesVoz(datos)
+  for (const k of CAMPOS_VOZ) if (k.id in c) {
+    if (typeof c[k.id] !== 'string' || (c[k.id] as string).length > 20000) throw new Error('dato inválido')
+    valores[k.id] = (c[k.id] as string).trim()
+  }
+  const cabeza = intro || '# Mi voz\n\nCómo escribo, para que los posts suenen a mí y no a una IA.'
+  mkdirSync(join(datos, 'linkedin'), { recursive: true })
+  writeFileSync(archivoVoz(datos), [cabeza, ...CAMPOS_VOZ.map((k) => `## ${k.titulo}\n\n${valores[k.id] ?? ''}`.trim()), ...otras].join('\n\n') + '\n')
+}
