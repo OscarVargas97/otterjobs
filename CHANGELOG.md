@@ -15,6 +15,7 @@ Lo que trae cada versión de otterjobs, lo más nuevo arriba.
 - En la app: «Mi perfil con Claude» y «Buscar ofertas»; los botones de cada postulación abren los comandos nuevos.
 - README con la instalación completa desde cero.
 - **El método como plugin**: las reglas y los comandos viven en `metodo/` (plugin de Claude Code) y la app lo abre con `--plugin-dir`. La carpeta de datos queda solo con datos, y tus reglas propias pasan a `perfil/preferencias.md`.
+- `otterjobs nuevo` sin carpeta crea `otterjobs/datos/` (ignorada por git, para versionarla en su propio repo privado).
 
 
 `refactor/datos-sqlite`

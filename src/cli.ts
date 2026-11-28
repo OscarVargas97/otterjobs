@@ -5,7 +5,7 @@
 //   pnpm otterjobs gmail [--dias 7] | gmail --pendientes | gmail --revisado
 //   pnpm otterjobs perfil [--json]   (etapas del perfil: qué está listo y qué sigue)
 //   pnpm otterjobs pdf <archivo.html> [salida.pdf]   (CV a PDF con Edge o Chrome)
-//   pnpm otterjobs nuevo <carpeta> | datos <carpeta> | migrar
+//   pnpm otterjobs nuevo [carpeta] | datos <carpeta> | migrar
 import { join, resolve } from 'node:path'
 import { carpetaDatos, credencialesGmail, guardarCarpetaDatos, RUTA_ENV, rutas } from './core/config.ts'
 import { usar } from './core/db.ts'
@@ -17,7 +17,7 @@ import { crearDatos } from './core/plantilla.ts'
 import { agregarPendiente, leerPendientes, marcarPendiente } from './core/pendientes.ts'
 import { actualizar, agregar, ESTADOS, historial, isoHoy, leer, tareas, type Fila } from './core/tracker.ts'
 
-const ayuda = `uso: otterjobs ver [--estado X] [--q texto] | stats | tareas | historial ORDEN | set ORDEN campo=valor ... | add campo=valor ... | pendiente "texto" | hecha ID | gmail [--dias N | --pendientes | --revisado] | perfil [--json] | pdf <html> [pdf] | nuevo <carpeta> | datos <carpeta> | migrar`
+const ayuda = `uso: otterjobs ver [--estado X] [--q texto] | stats | tareas | historial ORDEN | set ORDEN campo=valor ... | add campo=valor ... | pendiente "texto" | hecha ID | gmail [--dias N | --pendientes | --revisado] | perfil [--json] | pdf <html> [pdf] | nuevo [carpeta] | datos <carpeta> | migrar`
 const corto = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1) + '…').padEnd(n)
 const opcion = (a: string[], k: string) => (a.includes(k) ? a[a.indexOf(k) + 1] : undefined)
 
@@ -36,12 +36,12 @@ const linea = (f: Fila) => `${f.orden.padStart(3)} ${corto(f.prob, 10)} ${corto(
 async function main(a: string[]) {
   const [cmd, ...resto] = a
   if (cmd === 'nuevo') {
-    if (!resto[0]) throw new Error('uso: nuevo <carpeta>')
     const raiz = resolve(import.meta.dirname, '..')
-    crearDatos(resto[0], join(raiz, 'plantilla'))
-    guardarCarpetaDatos(resto[0])
+    const destino = resto[0] ?? join(raiz, 'datos') // por defecto otterjobs/datos: ignorada por git, va en su propio repo privado
+    crearDatos(destino, join(raiz, 'plantilla'))
+    guardarCarpetaDatos(destino)
     const metodo = join(raiz, 'metodo').replace(/\\/g, '/')
-    return console.log(`Carpeta de datos creada en ${resto[0]}. Deja tu material en fuentes/, abre ahí \`claude --plugin-dir ${metodo}\` y escribe /otterjobs:perfil.`)
+    return console.log(`Carpeta de datos creada en ${destino}. Deja tu material en fuentes/, abre ahí \`claude --plugin-dir ${metodo} --settings ${metodo}/settings.json\` y escribe /otterjobs:perfil.`)
   }
   if (cmd === 'pdf') {
     if (!resto[0]) throw new Error('uso: pdf <archivo.html> [salida.pdf]')

@@ -36,15 +36,15 @@ pnpm install
 ## 3. Crear tu carpeta de datos
 
 ```sh
-pnpm otterjobs nuevo C:/ruta/a/mis-datos
+pnpm otterjobs nuevo
 ```
 
-Crea la carpeta desde `plantilla/` (los archivos de `perfil/` por llenar y la base vacía) y la deja como carpeta activa en `~/.otterjobs/config.json`. La carpeta tiene que no existir o estar vacía.
+Crea `otterjobs/datos/` desde `plantilla/` (los archivos de `perfil/` por llenar y la base vacía) y la deja como carpeta activa en `~/.otterjobs/config.json`. `datos/` está en el `.gitignore` de otterjobs: es solo datos y se versiona aparte, en su propio repo. `pnpm otterjobs nuevo <carpeta>` la crea en otro lugar. La carpeta tiene que no existir o estar vacía.
 
 Para versionarla (recomendado, en un repo **privado**):
 
 ```sh
-cd C:/ruta/a/mis-datos
+cd datos
 git init
 git add -A
 git commit -m "inicio"
@@ -56,9 +56,9 @@ git commit -m "inicio"
 
 ## 4. Armar tu perfil
 
-1. Deja en `mis-datos/fuentes/` todo lo que tengas: CV antiguos, el PDF o la exportación de LinkedIn, certificados, cartas de recomendación, evaluaciones de desempeño, chats exportados (Discord, Slack, WhatsApp), notas sueltas.
+1. Deja en `datos/fuentes/` todo lo que tengas: CV antiguos, el PDF o la exportación de LinkedIn, certificados, cartas de recomendación, evaluaciones de desempeño, chats exportados (Discord, Slack, WhatsApp), notas sueltas.
 2. Revisa qué falta: `pnpm otterjobs perfil` (desde la carpeta de otterjobs).
-3. Abre Claude Code en tu carpeta de datos con el método de otterjobs (`cd mis-datos` y `claude --plugin-dir C:/ruta/a/otterjobs/metodo`) y escribe `/perfil` (o `/otterjobs:perfil` si otro plugin usa el mismo nombre). Los botones de la app lo abren así solos. Trabaja una etapa por vez, te pregunta lo que falta y escribe en tus archivos solo lo que está respaldado:
+3. Abre Claude Code en tu carpeta de datos con el método de otterjobs (`cd datos` y `claude --plugin-dir ../metodo --settings ../metodo/settings.json`; el segundo deja fuera el `CLAUDE.md` de desarrollo de otterjobs) y escribe `/perfil` (o `/otterjobs:perfil` si otro plugin usa el mismo nombre). Los botones de la app lo abren así solos. Trabaja una etapa por vez, te pregunta lo que falta y escribe en tus archivos solo lo que está respaldado:
 
 | Etapa | Archivo | Qué queda |
 |---|---|---|

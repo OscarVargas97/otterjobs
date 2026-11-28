@@ -1,6 +1,7 @@
 // «Preguntarle a Claude»: abre Claude Code interactivo (suscripción, no API ni `claude -p`) en la carpeta de datos,
 // con el plugin metodo/ (reglas y comandos). La app solo arma el pedido; el criterio y la redacción quedan en Claude.
 import { spawn } from 'node:child_process'
+import { join } from 'node:path'
 import type { Fila } from './tracker.ts'
 
 // Cada pedido es un comando de metodo/commands: el método vive en el plugin, no en el código ni en los datos.
@@ -22,9 +23,10 @@ export function armarPedido(pedido: Pedido, fila?: Pick<Fila, 'orden' | 'empresa
   return `${PEDIDOS[pedido]} #${fila.orden} ${fila.empresa}, ${fila.cargo}`.replace(/;/g, ',').replace(/[\r\n"]+/g, ' ')
 }
 
-/** `metodo`: la carpeta del plugin (en la app empaquetada, fuera del asar para que Claude Code la lea). */
+/** `metodo`: la carpeta del plugin (en la app empaquetada, fuera del asar para que Claude Code la lea).
+ *  Su settings.json deja fuera el CLAUDE.md de desarrollo de otterjobs cuando los datos están en otterjobs/datos. */
 export function abrirClaude(cwd: string, metodo: string, texto: string): void {
-  const claude = ['claude', '--plugin-dir', metodo, texto]
+  const claude = ['claude', '--plugin-dir', metodo, '--settings', join(metodo, 'settings.json'), texto]
   const [cmd, args] =
     process.platform === 'win32'
       ? ['wt.exe', ['-d', cwd, '--title', 'otterjobs · Claude', ...claude]]
