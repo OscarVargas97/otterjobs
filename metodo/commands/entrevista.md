@@ -9,6 +9,6 @@ Argumento: la postulación del tracker (`#ORDEN`). Archivo: `postulaciones/…/e
 3. **Preguntas probables** con su respuesta basada en `perfil.md`: motivación, salidas (§8), las señales de alerta de `criterios-revision.md` §3, las técnicas del cargo y las situacionales con historias STAR. Cada sigla, la primera vez, con su nombre completo.
 4. **Preguntas para hacer** al final: 3 a 5, sobre el equipo, el desafío y el proceso.
 5. **Práctica**, si la pide: una pregunta por vez; la persona responde; tú puntúas de 1 a 10 y dices qué faltó; propones la versión 10/10 con sus palabras; repites hasta que esté lista. Guarda las respuestas finales en el archivo.
-6. **Después:** anota en el archivo las preguntas que salieron y `otterjobs set ORDEN estado=… proximo_paso=… vence=…`.
+6. **Después:** anota en el archivo las preguntas que salieron; lo que aprendiste (una respuesta que no funcionó, una pregunta que no esperabas, algo del mercado) va en «## Aprendizajes» de la ficha, una viñeta con fecha; y `otterjobs set ORDEN estado=… proximo_paso=… vence=…`.
 
 $ARGUMENTS

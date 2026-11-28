@@ -2,7 +2,7 @@
 description: Importa tu perfil a los formularios de la app o refina una etapa (hechos, preferencias, mercado, marca, alertas, CV, perfiles) desde tus fuentes
 ---
 
-Sigue el método de otterjobs; la regla 1 (no inventar) manda. Argumento: `importar`, una etapa, o nada para la que sigue.
+Sigue el método de otterjobs; la regla 1 (no inventar) manda. Argumento: `importar`, `aprendizajes`, una etapa, o nada para la que sigue.
 
 **Cómo se guarda el perfil:** la persona lo llena en la app (vista Perfil) y las respuestas quedan en `perfil/perfil.json` (`{ "listas": [...], "etapas": { "<etapa>": { campo: valor } } }`). De ahí la app genera `perfil.md`, `preferencias.md`, `marca.md`, `perfiles.md`, `criterios-revision.md` §1 y §3 y `cv/cv.html`. **No edites esos archivos generados:** edita `perfil/perfil.json` y corre `otterjobs perfil generar`. `otterjobs perfil campos` da los campos de cada etapa con su ayuda: usa solo esos nombres (`generar` rechaza los demás). Las fechas de la experiencia van como `AAAA-MM`, y la de término queda vacía si la persona sigue en ese cargo. Las listas son arreglos de objetos y los campos de texto largo usan una línea por ítem. **Nunca agregues una etapa a `listas`:** la da por buena la persona en la app.
 
@@ -14,6 +14,11 @@ Para quien ya tiene un perfil escrito (a mano o con Claude) y quiere llevarlo a 
 2. Antes de `otterjobs perfil generar`, muestra qué va a quedar distinto en cada archivo: la app reemplaza los archivos escritos a mano y deja el original como `.anterior.md` (o `.anterior.html`). El CV generado es de una columna; si la persona prefiere su diseño actual, no importes la etapa `cv`.
 3. Archivos fuera de las etapas (CV en otro idioma, notas, carpetas propias): no se tocan.
 4. Termina diciendo qué revisar en la app y que ahí cada etapa se marca como lista.
+
+**Las fuentes** (`fuentes/`, solo lectura, no se versiona): `cv/` (CV y documentos), `linkedin/` (los CSV de la exportación: `Positions`, `Education`, `Skills`, `Recommendations_Received`, `Shares`…), `git/` (resúmenes de commits y PRs por repo o cuenta: periodo, volumen, lenguajes y mensajes), `notas/` y lo demás. De git saca qué construyó, con qué tecnologías y cuánto tiempo, nunca nombres de repos privados, clientes, rutas ni cifras internas: eso va a `sensible` o se generaliza («plataforma de pagos para un banco»).
+
+## aprendizajes
+Lee «## Aprendizajes» de las fichas de `postulaciones/` (y las entrevistas) y propone qué cambia en el perfil: una historia STAR nueva o mejor, una respuesta a una alerta, un logro mejor contado, una preferencia o regla nueva, la banda salarial. De a 3 o 4, con la etapa donde va; aplica lo aprobado y corre `otterjobs perfil generar`.
 
 ## En cada etapa
 **Si la etapa está vacía, llénala tú:** la persona no debería tipear lo que ya está escrito en algún lado. Lee `fuentes/`, las demás etapas de `perfil.json` y los archivos del perfil que existan; llena todos los campos que se puedan respaldar y pregunta solo lo que falte (de a 3 o 4 preguntas, con opciones). Sigue la guía de la etapa, abajo.
