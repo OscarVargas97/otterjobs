@@ -3,21 +3,22 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+// `usa`: de qué sale cada etapa (por eso van en este orden). `sirve`: dónde se nota fuera del perfil.
 export const ETAPAS = [
-  { id: 'hechos', archivo: 'perfil/perfil.md', que: 'Hechos respaldados por fuentes/ y tus respuestas' },
-  { id: 'preferencias', archivo: 'perfil/preferencias.md', que: 'Cargos, renta, modalidad, correo de envío y tono' },
-  { id: 'mercado', archivo: 'perfil/criterios-revision.md', que: 'Portales, cómo filtran y bandas salariales' },
-  { id: 'marca', archivo: 'perfil/marca.md', que: 'Cuestionario, posicionamiento y frases por canal' },
-  { id: 'alertas', archivo: 'perfil/criterios-revision.md', que: 'Lo que preguntará un reclutador y tu respuesta' },
-  { id: 'cv', archivo: 'cv/cv.html', que: 'CV base desde los hechos y la marca' },
-  { id: 'perfiles', archivo: 'perfil/perfiles.md', que: 'LinkedIn y los portales de tu mercado' },
-  { id: 'revision', archivo: 'perfil/criterios-revision.md', que: 'Primera evaluación del CV (/revisar)' }
+  { id: 'hechos', archivo: 'perfil/perfil.md', que: 'Hechos respaldados por fuentes/ y tus respuestas', usa: [], sirve: 'el CV, la evaluación de ofertas, las postulaciones y la preparación de entrevistas' },
+  { id: 'preferencias', archivo: 'perfil/preferencias.md', que: 'Cargos, renta, modalidad, correo de envío y tono', usa: [], sirve: 'la búsqueda de ofertas, su evaluación, las postulaciones y los mensajes' },
+  { id: 'mercado', archivo: 'perfil/criterios-revision.md', que: 'Portales, cómo filtran y bandas salariales', usa: ['preferencias'], sirve: 'la búsqueda de ofertas (dónde buscar) y la revisión del CV' },
+  { id: 'marca', archivo: 'perfil/marca.md', que: 'Cuestionario, posicionamiento y frases por canal', usa: ['hechos'], sirve: 'el CV y los posts de LinkedIn' },
+  { id: 'alertas', archivo: 'perfil/criterios-revision.md', que: 'Lo que preguntará un reclutador y tu respuesta', usa: ['hechos'], sirve: 'la preparación de entrevistas' },
+  { id: 'cv', archivo: 'cv/cv.html', que: 'CV base desde los hechos y la marca', usa: ['hechos', 'marca'], sirve: 'las postulaciones' },
+  { id: 'perfiles', archivo: 'perfil/perfiles.md', que: 'LinkedIn y los portales de tu mercado', usa: ['cv'], sirve: 'tu LinkedIn y los portales (los pegas a mano)' },
+  { id: 'revision', archivo: 'perfil/criterios-revision.md', que: 'Primera evaluación del CV (/revisar)', usa: ['cv'], sirve: 'saber qué corregir del CV' }
 ] as const
 export type Etapa = (typeof ETAPAS)[number]['id']
 
 export type EstadoPerfil = {
   fuentes: number
-  etapas: { id: Etapa; archivo: string; que: string; listo: boolean }[]
+  etapas: { id: Etapa; archivo: string; que: string; usa: readonly Etapa[]; sirve: string; listo: boolean }[]
   porConfirmar: string[]
   siguiente: Etapa | null
 }

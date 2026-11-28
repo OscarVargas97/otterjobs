@@ -592,6 +592,11 @@ function Perfil({ s, hacer, ocupado, ir }: { s: Estado; hacer: Hacer; ocupado: b
   const [ver, setVer] = useState(false)
   const vacio = !Object.values(p.valores[etapa] ?? {}).some((v) => (Array.isArray(v) ? v.length : String(v).trim()))
   const conClaude = () => hacer(() => api.claude('perfil', etapa))
+  // Cada etapa sale de otras (ETAPAS.usa): se muestra de dónde sale y adónde va, para no tener que conocer el sistema.
+  const hecho = (u: Etapa) => p.estado.etapas.find((x) => x.id === u)!.listo
+  const nombre = (u: Etapa) => NOMBRE[u]
+  const irA = (u: Etapa) => (setEtapa(u), setVer(false))
+  const faltan = e.usa.filter((u) => !hecho(u))
   return (
     <div className="mx-auto max-w-5xl">
     <Pasos p={p} etapa={etapa} setEtapa={(x) => (setEtapa(x), setVer(false))} hacer={hacer} ir={ir} />
@@ -604,7 +609,7 @@ function Perfil({ s, hacer, ocupado, ir }: { s: Estado; hacer: Hacer; ocupado: b
         </p>
         <div className="space-y-0.5">
           {p.estado.etapas.map((x) => (
-            <button key={x.id} onClick={() => setEtapa(x.id)} className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm ${x.id === etapa ? 'bg-accent' : 'hover:bg-accent/60'}`}>
+            <button key={x.id} onClick={() => irA(x.id)} title={!x.listo && x.usa.some((u) => !hecho(u)) ? `Primero: ${x.usa.filter((u) => !hecho(u)).map(nombre).join(' y ')}` : undefined} className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm ${x.id === etapa ? 'bg-accent' : 'hover:bg-accent/60'} ${!x.listo && x.usa.some((u) => !hecho(u)) ? 'text-muted-foreground' : ''}`}>
               <span className={`w-4 ${x.listo ? 'text-ok' : 'text-muted-foreground'}`}>{x.listo ? <Check className="size-4" /> : '·'}</span>
               <span className="flex-1">
                 <span className="block">{NOMBRE[x.id]}</span>
@@ -626,6 +631,17 @@ function Perfil({ s, hacer, ocupado, ir }: { s: Estado; hacer: Hacer; ocupado: b
           <div className="flex-1">
             <h2 className="text-base font-semibold">{NOMBRE[etapa]}</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">{p.formulario[etapa].intro}</p>
+            {e.usa.length > 0 && (
+              <p className="mt-2 flex flex-wrap items-center gap-1.5 text-2xs text-muted-foreground">
+                <span>Sale de</span>
+                {e.usa.map((u) => (
+                  <button key={u} onClick={() => irA(u)} className={`flex items-center gap-1 rounded-full border px-2 py-0.5 hover:bg-accent ${hecho(u) ? 'border-border text-foreground' : 'border-primary/50 text-primary'}`}>
+                    {hecho(u) ? <Check className="size-3 text-ok" /> : '·'} {nombre(u)}
+                  </button>
+                ))}
+              </p>
+            )}
+            <p className="mt-1 text-2xs text-muted-foreground">Se usa en {e.sirve}.</p>
           </div>
           <div className="flex rounded-md border border-border p-0.5 text-xs">
             {(['Formulario', 'Ver archivo'] as const).map((x, i) => (
@@ -634,8 +650,14 @@ function Perfil({ s, hacer, ocupado, ir }: { s: Estado; hacer: Hacer; ocupado: b
           </div>
           {etapa !== 'revision' && <Boton tam="xs" variante="outline" onClick={conClaude}><Bot /> {vacio ? 'Llenar' : 'Refinar'} con Claude</Boton>}
         </div>
+        {faltan.length > 0 && !e.listo && (
+          <div className="flex items-center gap-3 rounded-md border border-primary/40 bg-primary/10 p-3 text-sm">
+            <p className="flex-1">{NOMBRE[etapa]} se arma con {faltan.map(nombre).join(' y ')}, y todavía no {faltan.length > 1 ? 'están listas' : 'está lista'}. Conviene completar{faltan.length > 1 ? 'las' : 'la'} primero.</p>
+            <Boton tam="sm" variante="outline" onClick={() => irA(faltan[0])}>Ir a {nombre(faltan[0])}</Boton>
+          </div>
+        )}
         {ver ? <Visor key={etapa + JSON.stringify(p.valores[etapa] ?? null) + p.estado.etapas.map((x) => x.listo).join()} ruta={e.archivo} /> : <>
-        {vacio && !manual && etapa !== 'revision' && (
+        {vacio && !manual && !faltan.length && etapa !== 'revision' && (
           <div className="flex items-center gap-3 rounded-md border border-primary/40 bg-primary/10 p-3 text-sm">
             <p className="flex-1">No hace falta llenarlo a mano: Claude lo arma con lo que hay en fuentes/ (CV antiguos, LinkedIn, certificados) y tus otras etapas, y te pregunta solo lo que falte. Después lo revisas aquí.</p>
             <Boton tam="sm" onClick={conClaude}><Bot /> Llenar con Claude</Boton>
