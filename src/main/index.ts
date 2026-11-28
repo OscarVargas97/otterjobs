@@ -10,7 +10,7 @@ import { alertasSugeridas, etapasManuales, FORMULARIO, guardarEtapa, leerPerfilJ
 import { aPdf } from '../core/pdf.ts'
 import { estadoPerfil, ETAPAS, type Etapa } from '../core/perfil.ts'
 import { agregarPendiente, leerPendientes, marcarPendiente } from '../core/pendientes.ts'
-import { actualizar, agregar, historial, isoHoy, leer, tareas } from '../core/tracker.ts'
+import { actualizar, agregar, historial, isoHoy, leer, tareas, type Fila } from '../core/tracker.ts'
 import { abrirTerminal, cerrarTerminales } from './terminal.ts'
 
 // Velopack: instalar, actualizar y desinstalar corren aquí antes que nada.
@@ -31,12 +31,12 @@ function estado() {
     pendientes,
     inbox: leerInbox(r.inbox).map((c) => ({ ...c, enlace: enlaceGmail(c.id, c.cuenta) })),
     gmail: cuentasGmail().map((c) => c.user),
-    perfil: perfil(datos),
+    perfil: perfil(datos, filas),
     version: app.getVersion()
   }
 }
 
-function perfil(datos: string) {
+function perfil(datos: string, filas: Fila[]) {
   const { etapas } = leerPerfilJson(datos)
   const h = etapas.hechos ?? {}
   return {
@@ -46,8 +46,20 @@ function perfil(datos: string) {
     estado: estadoPerfil(datos),
     sugeridas: alertasSugeridas(h, isoHoy().slice(0, 7)),
     checks: revisarCv(h, etapas.cv ?? {}),
-    pdf: existsSync(join(datos, 'cv', 'cv.pdf'))
+    pdf: existsSync(join(datos, 'cv', 'cv.pdf')),
+    cvs: cvs(datos, filas)
   }
+}
+
+/** Todos los CV: los base de cv/ y los adaptados en la carpeta de cada postulación, con su PDF si lo hay. */
+function cvs(datos: string, filas: Fila[]) {
+  const en = (rel: string) => (existsSync(join(datos, rel)) ? readdirSync(join(datos, rel)) : [])
+  const carpeta = (rel: string, titulo: string, base: boolean) => {
+    const fs = en(rel)
+    const pdfs = fs.filter((f) => /\.pdf$/i.test(f)).map((f) => `${rel}/${f}`)
+    return fs.filter((f) => /\.html?$/i.test(f) && (!base || !/\.anterior\./.test(f)) && (base || /^cv/i.test(f))).map((f) => ({ ruta: `${rel}/${f}`, titulo, archivo: f, pdfs }))
+  }
+  return [...carpeta('cv', 'CV base', true), ...filas.filter((f) => f.ficha).flatMap((f) => carpeta(f.ficha, `${f.empresa} · ${f.cargo}`, false))]
 }
 
 const enviar = () => {

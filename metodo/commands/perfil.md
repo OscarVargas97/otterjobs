@@ -10,13 +10,15 @@ Sigue el método de otterjobs; la regla 1 (no inventar) manda. Argumento: `impor
 
 ## importar
 Para quien ya tiene un perfil escrito (a mano o con Claude) y quiere llevarlo a los formularios.
-1. Lee los archivos del perfil que existen y `fuentes/`. Arma `perfil.json` etapa por etapa, sin perder contenido: lo que no calce en un campo va al campo de texto más cercano (`diferencia`, `sensible`, `porConfirmar` o `reglas`). Si de verdad no calza, dilo y no lo descartes en silencio.
+1. Lee los archivos del perfil que existen y `fuentes/`. Arma `perfil.json` etapa por etapa, sin perder contenido: el contexto de cada empresa va a `contexto`, las aclaraciones de cada cargo (cómo nombrarlo, qué no se afirma, de dónde sale una cifra) a `notas`, y una sección propia que no calce en ningún campo, a `extras` con su título. Si de verdad no calza, dilo y no lo descartes en silencio.
 2. Antes de `otterjobs perfil generar`, muestra qué va a quedar distinto en cada archivo: la app reemplaza los archivos escritos a mano y deja el original como `.anterior.md` (o `.anterior.html`). El CV generado es de una columna; si la persona prefiere su diseño actual, no importes la etapa `cv`.
 3. Archivos fuera de las etapas (CV en otro idioma, notas, carpetas propias): no se tocan.
 4. Termina diciendo qué revisar en la app y que ahí cada etapa se marca como lista.
 
-## En cada etapa (refinar)
-Lee `perfil.json` y `fuentes/`. Propón mejoras de a 3 o 4 cosas, con opciones concretas sacadas de los datos en vez de preguntas abiertas. Aplica lo que la persona apruebe en `perfil.json` y corre `otterjobs perfil generar`. Cierra con «Revísalo en la app (Perfil) y márcala lista cuando la des por buena».
+## En cada etapa
+**Si la etapa está vacía, llénala tú:** la persona no debería tipear lo que ya está escrito en algún lado. Lee `fuentes/`, las demás etapas de `perfil.json` y los archivos del perfil que existan; llena todos los campos que se puedan respaldar y pregunta solo lo que falte (de a 3 o 4 preguntas, con opciones). Sigue la guía de la etapa, abajo.
+
+**Si ya tiene datos (refinar):** lee `perfil.json` y `fuentes/`. Propón mejoras de a 3 o 4 cosas, con opciones concretas sacadas de los datos en vez de preguntas abiertas. Aplica lo que la persona apruebe en `perfil.json` y corre `otterjobs perfil generar`. Cierra con «Revísalo en la app (Perfil) y márcala lista cuando la des por buena».
 
 ## hechos
 1. Lee todo `fuentes/`. Si está vacía, di qué conviene dejar (CV antiguos, PDF o exportación de LinkedIn, certificados, cartas de recomendación, evaluaciones de desempeño, chats exportados, notas) y detente.

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ArrowLeft, Bot, CalendarClock, Check, ChevronRight, ExternalLink, FolderOpen, Inbox, KanbanSquare, Mail, Plus, RefreshCw, SquareTerminal, UserRound, X } from 'lucide-react'
+import { ArrowLeft, Bot, CalendarClock, Check, ChevronRight, ExternalLink, FileText, FolderOpen, Inbox, KanbanSquare, Mail, Plus, RefreshCw, SquareTerminal, UserRound, X } from 'lucide-react'
 import type { Correo } from '../../core/gmail.ts'
 import type { Pendiente } from '../../core/pendientes.ts'
 import type { Evento, Fila, Tarea } from '../../core/tracker.ts'
@@ -23,6 +23,7 @@ type Estado = {
     sugeridas: string[]
     checks: { ok: boolean; texto: string }[]
     pdf: boolean
+    cvs: { ruta: string; titulo: string; archivo: string; pdfs: string[] }[]
   }
   version?: string
 }
@@ -481,6 +482,9 @@ function Perfil({ s, hacer, ocupado }: { s: Estado; hacer: Hacer; ocupado: boole
   const e = p.estado.etapas.find((x) => x.id === etapa)!
   const manual = p.manual.includes(etapa)
   const [ver, setVer] = useState(false)
+  const [misCv, setMisCv] = useState(false)
+  const vacio = !Object.values(p.valores[etapa] ?? {}).some((v) => (Array.isArray(v) ? v.length : String(v).trim()))
+  const conClaude = () => hacer(() => api.claude('perfil', etapa))
   return (
     <div className="flex gap-5">
       <div className="w-60 shrink-0 space-y-3">
@@ -491,7 +495,7 @@ function Perfil({ s, hacer, ocupado }: { s: Estado; hacer: Hacer; ocupado: boole
         </p>
         <div className="space-y-0.5">
           {p.estado.etapas.map((x) => (
-            <button key={x.id} onClick={() => setEtapa(x.id)} className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm ${x.id === etapa ? 'bg-accent' : 'hover:bg-accent/60'}`}>
+            <button key={x.id} onClick={() => (setEtapa(x.id), setMisCv(false))} className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm ${x.id === etapa && !misCv ? 'bg-accent' : 'hover:bg-accent/60'}`}>
               <span className={`w-4 ${x.listo ? 'text-ok' : 'text-muted-foreground'}`}>{x.listo ? <Check className="size-4" /> : '·'}</span>
               <span className="flex-1">
                 <span className="block">{NOMBRE[x.id]}</span>
@@ -500,6 +504,11 @@ function Perfil({ s, hacer, ocupado }: { s: Estado; hacer: Hacer; ocupado: boole
             </button>
           ))}
         </div>
+        <button onClick={() => setMisCv(true)} className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm ${misCv ? 'bg-accent' : 'hover:bg-accent/60'}`}>
+          <FileText className="size-4 text-muted-foreground" />
+          <span className="flex-1">Mis CV</span>
+          <span className="text-2xs text-muted-foreground">{p.cvs.length}</span>
+        </button>
         {p.manual.length > 0 && (
           <div className="space-y-2 rounded-md border border-border p-2 text-xs text-muted-foreground">
             <p>Ya tienes archivos de perfil escritos fuera de la app. Claude puede llevarlos a estos formularios sin perder nada.</p>
@@ -508,7 +517,7 @@ function Perfil({ s, hacer, ocupado }: { s: Estado; hacer: Hacer; ocupado: boole
         )}
       </div>
 
-      <div className="min-w-0 max-w-3xl flex-1 space-y-4">
+      {misCv ? <MisCv cvs={p.cvs} hacer={hacer} /> : <div className="min-w-0 max-w-3xl flex-1 space-y-4">
         <div className="flex items-start gap-3">
           <div className="flex-1">
             <h2 className="text-base font-semibold">{NOMBRE[etapa]}</h2>
@@ -519,9 +528,15 @@ function Perfil({ s, hacer, ocupado }: { s: Estado; hacer: Hacer; ocupado: boole
               <button key={x} onClick={() => setVer(!!i)} className={`rounded px-2 py-0.5 ${ver === !!i ? 'bg-accent text-foreground' : 'text-muted-foreground'}`}>{x}</button>
             ))}
           </div>
-          {etapa !== 'revision' && <Boton tam="xs" variante="outline" onClick={() => hacer(() => api.claude('perfil', etapa))}><Bot /> Refinar con Claude</Boton>}
+          {etapa !== 'revision' && <Boton tam="xs" variante="outline" onClick={conClaude}><Bot /> {vacio ? 'Llenar' : 'Refinar'} con Claude</Boton>}
         </div>
         {ver ? <Visor key={etapa + JSON.stringify(p.valores[etapa] ?? null) + p.estado.etapas.map((x) => x.listo).join()} ruta={e.archivo} /> : <>
+        {vacio && !manual && etapa !== 'revision' && (
+          <div className="flex items-center gap-3 rounded-md border border-primary/40 bg-primary/10 p-3 text-sm">
+            <p className="flex-1">No hace falta llenarlo a mano: Claude lo arma con lo que hay en fuentes/ (CV antiguos, LinkedIn, certificados) y tus otras etapas, y te pregunta solo lo que falte. Después lo revisas aquí.</p>
+            <Boton tam="sm" onClick={conClaude}><Bot /> Llenar con Claude</Boton>
+          </div>
+        )}
         {manual && (
           <p className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs">
             {e.archivo} se escribió fuera de la app y este formulario está vacío. Impórtalo con Claude primero; si guardas igual, el archivo se reemplaza y el actual queda como copia «.anterior».
@@ -529,7 +544,7 @@ function Perfil({ s, hacer, ocupado }: { s: Estado; hacer: Hacer; ocupado: boole
         )}
         <Formulario key={etapa + JSON.stringify(p.valores[etapa] ?? null)} etapa={etapa} p={p} listo={e.listo} hacer={hacer} ocupado={ocupado} />
         </>}
-      </div>
+      </div>}
     </div>
   )
 }
@@ -686,6 +701,35 @@ function ArchivosPostulacion({ carpeta, hacer }: { carpeta: string; hacer: Hacer
         <Boton tam="xs" variante="ghost" onClick={() => hacer(() => api.abrirArchivo(carpeta))}><FolderOpen /> Carpeta</Boton>
       </div>
       {ver && <Visor ruta={`${carpeta}/${ver}`} />}
+    </div>
+  )
+}
+
+/** Todos los CV en un lugar: los base y el adaptado de cada postulación. */
+function MisCv({ cvs, hacer }: { cvs: NonNullable<Estado['perfil']>['cvs']; hacer: Hacer }) {
+  const [sel, setSel] = useState(cvs[0]?.ruta)
+  const cv = cvs.find((c) => c.ruta === sel) ?? cvs[0]
+  if (!cv) return <p className="flex-1 text-sm text-muted-foreground">Todavía no hay CV. Se generan en la etapa CV y con cada postulación (/postular).</p>
+  return (
+    <div className="flex min-w-0 flex-1 gap-4">
+      <div className="w-64 shrink-0 space-y-0.5 overflow-auto">
+        {cvs.map((c) => (
+          <button key={c.ruta} onClick={() => setSel(c.ruta)} className={`block w-full rounded-md px-2 py-1.5 text-left text-sm ${c.ruta === cv.ruta ? 'bg-accent' : 'hover:bg-accent/60'}`}>
+            <span className="block truncate">{c.titulo}</span>
+            <span className="block truncate text-2xs text-muted-foreground">{c.archivo}</span>
+          </button>
+        ))}
+      </div>
+      <div className="min-w-0 flex-1 space-y-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="mr-auto truncate text-xs text-muted-foreground">{cv.ruta}</span>
+          {cv.pdfs.map((f) => (
+            <Boton key={f} tam="xs" variante="ghost" onClick={() => hacer(() => api.abrirArchivo(f))}><ExternalLink /> {f.split('/').pop()}</Boton>
+          ))}
+          <Boton tam="xs" variante="ghost" onClick={() => hacer(() => api.abrirArchivo(cv.ruta.slice(0, cv.ruta.lastIndexOf('/'))))}><FolderOpen /> Carpeta</Boton>
+        </div>
+        <Visor key={cv.ruta} ruta={cv.ruta} alto="h-[80vh]" />
+      </div>
     </div>
   )
 }

@@ -33,17 +33,20 @@ export const FORMULARIO: Record<Etapa, { intro: string; campos: Campo[] }> = {
         { k: 'desde', t: 'Desde', tipo: 'mes' },
         { k: 'hasta', t: 'Hasta', tipo: 'mes', ayuda: 'Vacío si sigues ahí' },
         texto('jornada', 'Jornada', 'Completa, parcial, por proyecto…'),
+        area('contexto', 'Contexto', 'Qué hace la empresa o el área, y para qué te contrataron. Va al CV en una línea.'),
         area('logros', 'Logros', 'Uno por línea: verbo en pasado, qué hiciste, con qué y qué resultado (con cifra si la hay). Di si fue propio o en equipo.'),
-        texto('herramientas', 'Herramientas y habilidades que usaste')
+        texto('herramientas', 'Herramientas y habilidades que usaste'),
+        area('notas', 'Notas internas', 'No van al CV: cómo nombrar la empresa, qué no se afirma, de dónde sale cada cifra')
       ], { ayuda: 'Del más reciente al más antiguo' }),
       area('diferencia', 'Lo que me diferencia'),
       lista('proyectos', 'Proyectos y trabajo adicional', [texto('nombre', 'Nombre'), area('descripcion', 'Qué es y qué hiciste'), texto('enlace', 'Enlace')], { ayuda: 'Proyectos personales, voluntariado, docencia, publicaciones' }),
-      lista('habilidades', 'Herramientas y habilidades', [texto('nombre', 'Herramienta o habilidad'), texto('donde', 'Dónde la usaste')]),
+      lista('habilidades', 'Herramientas y habilidades', [texto('nombre', 'Área, herramienta o habilidad'), texto('donde', 'Detalle: cuáles, dónde y cuánto')], { ayuda: 'Una fila por área (p. ej. «Software contable: …») o por herramienta' }),
       lista('educacion', 'Educación', [texto('titulo', 'Título'), texto('institucion', 'Institución'), texto('anio', 'Año')]),
       lista('certificaciones', 'Certificaciones', [texto('nombre', 'Certificación'), texto('emisor', 'Emisor'), texto('anio', 'Año')]),
       lista('idiomas', 'Idiomas', [texto('idioma', 'Idioma'), texto('nivel', 'Nivel')]),
       lista('historias', 'Historias para entrevistas (STAR)', [texto('titulo', 'De qué trata'), area('situacion', 'Situación'), area('tarea', 'Tarea'), area('accion', 'Acción (lo que hiciste tú)'), area('resultado', 'Resultado')], { ayuda: 'Al menos 3, sacadas de tu experiencia' }),
       lista('salidas', 'Cómo contar las salidas y los vacíos', [texto('que', 'Salida o vacío'), area('como', 'Cómo lo cuentas')]),
+      lista('extras', 'Otras secciones', [texto('titulo', 'Título'), area('contenido', 'Contenido')], { ayuda: 'Lo que no calza arriba: una especialidad que cruza varios trabajos, cómo trabajas o guías a otros, una prueba técnica' }),
       area('sensible', 'Qué queda fuera por sensible', 'Solo el tema, sin el detalle'),
       area('porConfirmar', 'Por confirmar', 'Dudas que te quedan, una por línea')
     ]
@@ -61,7 +64,7 @@ export const FORMULARIO: Record<Etapa, { intro: string; campos: Campo[] }> = {
       texto('responder', 'Cómo responder la renta', 'Bruto o líquido, moneda, si se ajusta al rango publicado sin bajar del piso'),
       texto('correoEnvio', 'Correo desde el que postulo'),
       texto('cuentasNo', 'Cuentas que no se usan para postular', 'P. ej., el correo de otro trabajo'),
-      texto('formalidad', 'Formalidad por defecto de los mensajes'),
+      area('formalidad', 'Cómo escribo los mensajes', 'Una regla por línea: saludo, formalidad y largo, por correo y por chat'),
       area('reglas', 'Reglas propias', 'Una por línea: temas que no se mencionan, trabajo que no es tuyo, cifras que no se publican')
     ]
   },
@@ -74,7 +77,7 @@ export const FORMULARIO: Record<Etapa, { intro: string; campos: Campo[] }> = {
           { canal: 'ATS de la empresa', filtra: 'Leen el texto del PDF, reconocen secciones y buscan palabras clave y el título del cargo.', implica: 'CV de una columna y palabras clave dentro de cada cargo.' }
         ]
       }),
-      lista('bandas', 'Bandas salariales', [texto('cargo', 'Cargo y nivel'), texto('rango', 'Rango'), texto('fuente', 'Fuente y fecha')]),
+      lista('bandas', 'Bandas salariales', [texto('cargo', 'Cargo y nivel'), texto('rango', 'Rango'), texto('fuente', 'Fuente y fecha'), texto('encaje', 'Tu encaje y lo que te falta')]),
       area('volumen', 'Volumen de ofertas por cargo'),
       area('lectura', 'Lectura', 'Qué cargo da volumen, cuál paga más, cuál va como CV base y cuáles como variantes')
     ]
@@ -90,13 +93,15 @@ export const FORMULARIO: Record<Etapa, { intro: string; campos: Campo[] }> = {
       texto('visibilidad', 'Visibilidad', '¿Vas a publicar? ¿Con qué frecuencia y sobre qué?'),
       texto('limites', 'Límites', '¿Qué no se menciona nunca? Agrégalo también a «Reglas propias» en Preferencias'),
       area('describo', 'Cómo me describo, en mis palabras', 'Sin pulir: es la materia prima de la marca'),
+      area('manifiesto', 'Manifiesto', 'Opcional: tu postura, en tus palabras y más larga'),
       lista('rasgos', 'Rasgos y su evidencia', [texto('rasgo', 'Rasgo'), area('evidencia', 'Evidencia en tu experiencia')], { ayuda: 'Un rasgo sin evidencia no entra' }),
       area('posicionamiento', 'Posicionamiento', 'Una frase, y por qué te distingue de quienes compiten por el mismo cargo'),
       texto('fraseCv', 'Frase para el CV'),
       texto('fraseLinkedin', 'Frase para LinkedIn'),
       texto('frasePosts', 'Frase para posts'),
       lista('historia', 'Cómo entra cada parte de tu historia', [texto('parte', 'Parte'), area('como', 'Cómo se cuenta (prueba principal, contexto o no se menciona)')]),
-      area('pilares', 'Pilares de contenido', 'Solo si vas a publicar: 3 o 4 temas, uno por línea')
+      area('pilares', 'Pilares de contenido', 'Solo si vas a publicar: 3 o 4 temas, uno por línea'),
+      area('publicaciones', 'Primeras publicaciones', 'Una por línea: el gancho y de qué trata')
     ]
   },
   alertas: {
@@ -265,7 +270,7 @@ function mdHechos(v: Valores, marca: string): string {
     bloque(`**${s(v, 'nombre') || 'Nombre'}**${s(v, 'titular') ? ` · ${s(v, 'titular')}` : ''}`, contacto),
     bloque('## 1. Posicionamiento', s(v, 'resumen')),
     bloque('### Pilares', vinetas(s(v, 'pilares'))),
-    bloque('## 2. Experiencia', filas(v, 'experiencia').map((e) => `### ${e.cargo} — ${e.empresa} · ${periodo(e)}${e.jornada ? ` (${e.jornada})` : ''}\n\n${vinetas(e.logros ?? '')}${e.herramientas ? `\n\nCon: ${e.herramientas}` : ''}`).join('\n\n')),
+    bloque('## 2. Experiencia', filas(v, 'experiencia').map((e) => [`### ${e.cargo} — ${e.empresa} · ${periodo(e)}${e.jornada ? ` (${e.jornada})` : ''}`, e.contexto?.trim() && `*${e.contexto.trim()}*`, vinetas(e.logros ?? ''), e.herramientas && `Con: ${e.herramientas}`, e.notas?.trim() && `> **Notas internas:** ${lineas(e.notas).join(' · ')}`].filter(Boolean).join('\n\n')).join('\n\n')),
     bloque('## 3. Lo que me diferencia', s(v, 'diferencia')),
     bloque('## 4. Proyectos y trabajo adicional', filas(v, 'proyectos').map((p) => `### ${p.nombre}${p.enlace ? ` (${p.enlace})` : ''}\n\n${p.descripcion ?? ''}`).join('\n\n')),
     bloque('## 5. Herramientas y habilidades', filas(v, 'habilidades').map((h) => `- **${h.nombre}**${h.donde ? `: ${h.donde}` : ''}`).join('\n')),
@@ -279,6 +284,7 @@ function mdHechos(v: Valores, marca: string): string {
     ),
     bloque('## 7. Historias para entrevistas (formato STAR)', filas(v, 'historias').map((h) => `### ${h.titulo}\n\n- **Situación:** ${h.situacion ?? ''}\n- **Tarea:** ${h.tarea ?? ''}\n- **Acción:** ${h.accion ?? ''}\n- **Resultado:** ${h.resultado ?? ''}`).join('\n\n')),
     bloque('## 8. Cómo contar las salidas y los vacíos', filas(v, 'salidas').map((x) => `- **${x.que}:** ${x.como ?? ''}`).join('\n')),
+    ...filas(v, 'extras').map((x) => bloque(`## ${x.titulo}`, x.contenido ?? '')),
     bloque('## Qué quedó fuera por sensible', s(v, 'sensible')),
     bloque('## Por confirmar', vinetas(s(v, 'porConfirmar')))
   ].join('\n').trimEnd() + '\n'
@@ -294,7 +300,7 @@ function mdPreferencias(v: Valores, marca: string, actual: string): string {
     bloque('## Búsqueda', [it('Cargos objetivo', 'cargos'), it('Descarto', 'descarto'), it('Modalidad y ubicación', 'modalidad'), it('Disponibilidad', 'disponibilidad'), it('Idiomas en que postulo', 'idiomas')].join('\n')),
     bloque('## Renta', [it('Piso líquido mensual', 'piso'), it('Pretensión por defecto', 'pretension'), it('Cómo responder', 'responder'), '- Lo que ya se le dio a cada empresa queda en la columna `sueldo` del tracker: con esa empresa se mantiene la misma cifra.'].join('\n')),
     bloque('## Envíos', [it('Correo desde el que postulo', 'correoEnvio'), it('Cuentas que no se usan para postular', 'cuentasNo'), '- El asistente no envía nada: deja el texto en el portapapeles (con el asunto, si es correo) y tú lo mandas.'].join('\n')),
-    bloque('## Mensajes', ['- **Correo:** saludo con el nombre al inicio, tono cordial y profesional, cierre breve.', '- **Chat (WhatsApp, LinkedIn):** corto y natural. Saludo solo al inicio, sin repetir el nombre de la persona en medio.', it('Formalidad por defecto', 'formalidad')].join('\n')),
+    bloque('## Mensajes', ['- **Correo:** saludo con el nombre al inicio, tono cordial y profesional, cierre breve.', '- **Chat (WhatsApp, LinkedIn):** corto y natural. Saludo solo al inicio, sin repetir el nombre de la persona en medio.', vinetas(s(v, 'formalidad'))].filter(Boolean).join('\n')),
     bloque('## Reglas propias', vinetas(s(v, 'reglas'))),
     corr
   ].join('\n').trimEnd() + '\n'
@@ -307,12 +313,14 @@ function mdMarca(v: Valores, marca: string): string {
     `# Marca personal\n\nLa estrategia: qué se destaca, en qué orden y con qué tono. Los hechos que la sostienen están en \`perfil.md\`.\n${marca}`,
     bloque('## Decisiones del cuestionario', tabla(['Tema', 'Pregunta', 'Decisión'], preg.map((c) => [c.t, c.ayuda, s(v, c.k)]))),
     bloque('## Cómo me describo (en mis palabras)', s(v, 'describo')),
+    s(v, 'manifiesto') && bloque('### Manifiesto', s(v, 'manifiesto')),
     bloque('## Rasgos y su evidencia', tabla(['Rasgo', 'Evidencia en `perfil.md`'], filas(v, 'rasgos').map((r) => [r.rasgo, r.evidencia]))),
     bloque('## Posicionamiento', s(v, 'posicionamiento')),
     bloque('## Frase de marca, por canal', tabla(['Canal', 'Frase'], [['CV', s(v, 'fraseCv')], ['LinkedIn', s(v, 'fraseLinkedin')], ['Posts', s(v, 'frasePosts')]])),
     bloque('## Cómo entra cada parte de mi historia', tabla(['Parte', 'Cómo se cuenta'], filas(v, 'historia').map((h) => [h.parte, h.como]))),
-    bloque('## Pilares de contenido', vinetas(s(v, 'pilares')))
-  ].join('\n').trimEnd() + '\n'
+    bloque('## Pilares de contenido', vinetas(s(v, 'pilares'))),
+    s(v, 'publicaciones') && bloque('### Primeras publicaciones', vinetas(s(v, 'publicaciones')))
+  ].filter(Boolean).join('\n').trimEnd() + '\n'
 }
 
 function mdPerfiles(v: Valores, marca: string): string {
@@ -333,7 +341,7 @@ const mdMercado = (v: Valores, marca: string) =>
     `## 1. Cómo se postula en mi mercado\n${marca}`,
     tabla(['Canal', 'Cómo filtra', 'Qué implica'], filas(v, 'portales').map((p) => [p.canal, p.filtra, p.implica])),
     '\n**Bandas salariales** (fuente y fecha de consulta):\n',
-    tabla(['Cargo y nivel', 'Rango', 'Fuente'], filas(v, 'bandas').map((b) => [b.cargo, b.rango, b.fuente])),
+    tabla(['Cargo y nivel', 'Rango', 'Fuente', 'Encaje y brecha'], filas(v, 'bandas').map((b) => [b.cargo, b.rango, b.fuente, b.encaje])),
     `\n**Volumen de ofertas por cargo:** ${s(v, 'volumen')}\n`,
     `**Lectura:** ${s(v, 'lectura')}\n`,
     '**Consistencia entre canales:** cargo, fechas, jornada y habilidades dicen lo mismo en el CV y en cada portal.\n'
@@ -369,6 +377,7 @@ ${AVISO}${marca ? `\n${marca.trim()}` : ''}
   ul { margin: 3px 0 0; padding-left: 18px; }
   li { margin: 1px 0; }
   p { margin: 3px 0; }
+  .contexto { font-style: italic; color: #333; }
 </style>
 </head>
 <body>
@@ -377,7 +386,7 @@ ${s(h, 'titular') ? `<p class="titular">${esc(s(h, 'titular'))}</p>` : ''}
 <p class="contacto">${contacto}</p>
 ${sec('Perfil', s(cv, 'resumen') ? `<p>${esc(s(cv, 'resumen'))}</p>` : '')}
 ${sec('Competencias', lineas(s(cv, 'competencias')).length ? `<p>${lineas(s(cv, 'competencias')).map(esc).join(' · ')}</p>` : '')}
-${sec('Experiencia', filas(h, 'experiencia').map((e) => `<div class="cargo"><div class="linea"><span><b>${esc(e.cargo)}</b> · <b>${esc(e.empresa)}</b>${e.jornada ? ` (${esc(e.jornada)})` : ''}</span><span>${esc(periodo(e))}</span></div>${ul(lineas(e.logros ?? ''))}</div>`).join('\n'))}
+${sec('Experiencia', filas(h, 'experiencia').map((e) => `<div class="cargo"><div class="linea"><span><b>${esc(e.cargo)}</b> · <b>${esc(e.empresa)}</b>${e.jornada ? ` (${esc(e.jornada)})` : ''}</span><span>${esc(periodo(e))}</span></div>${e.contexto?.trim() ? `<p class="contexto">${esc(e.contexto.trim())}</p>` : ''}${ul(lineas(e.logros ?? ''))}</div>`).join('\n'))}
 ${sec('Proyectos', filas(h, 'proyectos').map((p) => `<div class="cargo"><b>${esc(p.nombre)}</b>${p.enlace ? ` · ${esc(p.enlace)}` : ''}<p>${esc(p.descripcion)}</p></div>`).join('\n'))}
 ${sec('Educación', ul(filas(h, 'educacion').map((e) => `${e.titulo} — ${e.institucion}${e.anio ? `, ${e.anio}` : ''}`)))}
 ${sec('Certificaciones', ul(filas(h, 'certificaciones').map((c) => `${c.nombre}${c.emisor ? ` — ${c.emisor}` : ''}${c.anio ? `, ${c.anio}` : ''}`)))}

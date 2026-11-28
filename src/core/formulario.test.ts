@@ -87,3 +87,17 @@ test('formulario: alertas por fechas y revisión medible del CV', () => {
   assert.equal(r[0].ok, false)
   assert.equal(r[6].ok, true)
 })
+
+test('formulario: el contexto va al CV y las notas internas solo a perfil.md', () => {
+  const d = datos()
+  const exp = [{ ...hechos.experiencia[0], contexto: 'Distribuidora regional de alimentos', notas: 'La cifra de 4 días sale del informe de cierre' }]
+  guardarEtapa(d, 'hechos', { ...hechos, experiencia: exp, extras: [{ titulo: 'Cómo guío a otros', contenido: 'Primero escucho la duda completa.' }] }, false)
+  guardarEtapa(d, 'cv', { resumen: 'Analista' }, false)
+  const md = readFileSync(join(d, 'perfil', 'perfil.md'), 'utf8')
+  const cv = readFileSync(join(d, 'cv', 'cv.html'), 'utf8')
+  assert.match(md, /\*Distribuidora regional de alimentos\*/)
+  assert.match(md, /Notas internas:\*\* La cifra de 4 días/)
+  assert.match(md, /## Cómo guío a otros\n\nPrimero escucho/)
+  assert.match(cv, /class="contexto">Distribuidora regional/)
+  assert.doesNotMatch(cv, /informe de cierre/)
+})

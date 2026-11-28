@@ -8,7 +8,9 @@ Lo que trae cada versión de otterjobs, lo más nuevo arriba.
 
 ### Nuevo
 - **Perfil en la app**: la vista Perfil arma cada etapa con formularios (empleos, logros, preferencias, cuestionario de marca, alertas, perfiles y registro de evaluaciones). Escribe los archivos del perfil, arma el CV de una columna y lo exporta a PDF. Sugiere las señales de alerta que se ven en tus fechas y revisa lo medible del CV (largo del resumen, logros con cifras, verbos repetidos). Claude queda para refinar cada etapa o importar un perfil ya escrito (`/perfil importar`), editando `perfil/perfil.json`. `otterjobs perfil generar` rehace los archivos.
-- **Visor de archivos**: la ficha de cada postulación muestra su CV y su ficha dentro de la app (los PDF y la carpeta se abren afuera), y en Perfil «Ver archivo» muestra lo que se generó en cada etapa.
+- **Mis CV**: en Perfil, todos los CV en un lugar (los base y el adaptado de cada postulación), con su PDF. La ficha de cada postulación también muestra su CV y su ficha, y en cada etapa «Ver archivo» muestra lo que se generó.
+- **Claude llena las etapas vacías**: «Llenar con Claude» arma la etapa desde fuentes/ y las demás etapas, y pregunta solo lo que falte.
+- Campos nuevos para no perder lo que ya estaba escrito: contexto y notas internas por cargo, otras secciones, cómo escribo los mensajes, encaje y brecha por cargo, manifiesto y primeras publicaciones.
 - **Claude dentro de la app**: los botones con Claude abren Claude Code en la vista «Claude», una pestaña por sesión, en vez de una ventana aparte de Windows Terminal.
 - **Conectar Gmail desde la app**: la Bandeja guía los tres pasos con los enlaces de Google, prueba la conexión antes de guardar y busca los correos del último mes. Ya no hay que crear el `.env` a mano. Acepta **varias cuentas**: las lee todas y cada correo se abre en la cuenta donde llegó.
 - **Hoy más legible**: los próximos pasos se agrupan en vencidas, hoy, próximas y sin fecha (plegada), con la fecha y la empresa en columnas; «Otras tareas» va al costado.
