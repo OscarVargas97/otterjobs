@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
-import { existsSync, readdirSync, readFileSync, statSync, watch, type FSWatcher } from 'node:fs'
-import { isAbsolute, join, relative, resolve } from 'node:path'
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, watch, writeFileSync, type FSWatcher } from 'node:fs'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { VelopackApp } from 'velopack'
 import { argsClaude, armarPedido, PEDIDOS, type Pedido } from '../core/claude.ts'
 import { carpetaDatos, cuentasGmail, guardarCarpetaDatos, guardarCuentaGmail, quitarCuentaGmail, rutas } from '../core/config.ts'
@@ -8,6 +8,7 @@ import { enlaceGmail, escanear, leerInbox, marcarRevisado, probarGmail } from '.
 import { usar, type Db } from '../core/db.ts'
 import { alertasSugeridas, etapasManuales, FORMULARIO, guardarEtapa, leerPerfilJson, registrarEvaluacion, revisarCv } from '../core/formulario.ts'
 import { agregarIdea, CAMPOS_VOZ, estadoIdea, guardarPost, guardarVoz, leerIdeas, leerPosts, leerVoz, nuevoPost } from '../core/linkedin.ts'
+import { autores, copiarArchivos, estadoFuentes, guardarGit, guardarNota, importarLinkedin, leerCuenta, leerGit, leerReposLocales, probarCuenta, TIPOS, type Cuenta } from '../core/fuentes.ts'
 import { aPdf } from '../core/pdf.ts'
 import { estadoPerfil, ETAPAS, type Etapa } from '../core/perfil.ts'
 import { agregarPendiente, leerPendientes, marcarPendiente } from '../core/pendientes.ts'
@@ -34,6 +35,8 @@ function estado() {
     gmail: cuentasGmail().map((c) => c.user),
     perfil: perfil(datos, filas),
     linkedin: linkedin(datos),
+    mercado: existsSync(join(datos, 'mercado')) ? readdirSync(join(datos, 'mercado')).filter((f) => f.endsWith('.md')).sort().reverse().map((f) => `mercado/${f}`) : [],
+    fuentes: estadoFuentes(datos),
     version: app.getVersion()
   }
 }
@@ -91,9 +94,9 @@ function vigilar() {
   const avisar = () => (clearTimeout(t), (t = setTimeout(enviar, 200)))
   vigia = [watch(r.datos, (_e, f) => f && /^otterjobs\.db$/.test(String(f)) && avisar())]
   // perfil.json y los archivos del perfil cambian cuando Claude refina con /perfil
-  for (const d of ['perfil', 'cv']) if (existsSync(join(r.datos, d))) vigia.push(watch(join(r.datos, d), avisar))
+  for (const d of ['perfil', 'cv', 'mercado']) if (existsSync(join(r.datos, d))) vigia.push(watch(join(r.datos, d), avisar))
   // los posts y las ideas que escribe /semana
-  if (existsSync(join(r.datos, 'linkedin'))) vigia.push(watch(join(r.datos, 'linkedin'), { recursive: true }, avisar))
+  for (const d of ['linkedin', 'fuentes']) if (existsSync(join(r.datos, d))) vigia.push(watch(join(r.datos, d), { recursive: true }, avisar))
 }
 
 const datosOk = () => {
@@ -155,7 +158,7 @@ manejar('claude', (pedido, orden) => {
   if (typeof pedido !== 'string' || !Object.hasOwn(PEDIDOS, pedido)) throw new Error('pedido inválido')
   const r = datosOk()
   // /perfil recibe una etapa o «importar», y /semana un post o una idea, en vez de una postulación
-  if (pedido === 'perfil' && orden !== undefined && orden !== 'importar' && !ETAPAS.some((e) => e.id === orden)) throw new Error('etapa inválida')
+  if (pedido === 'perfil' && orden !== undefined && orden !== 'importar' && orden !== 'aprendizajes' && !ETAPAS.some((e) => e.id === orden)) throw new Error('etapa inválida')
   const libre = pedido === 'perfil' || pedido === 'semana'
   const fila = orden && !libre ? usar(r.db, leer).find((f) => f.orden === orden) : undefined
   const metodo = join(app.getAppPath(), 'metodo').replace('app.asar', 'app.asar.unpacked')
@@ -174,10 +177,11 @@ manejar('nuevoPost', (titulo, pilar) => void nuevoPost(datosOk().datos, titulo, 
 manejar('agregarIdea', (v) => agregarIdea(datosOk().datos, v, isoHoy()))
 manejar('guardarVoz', (v) => guardarVoz(datosOk().datos, v))
 manejar('estadoIdea', (i, estado) => estadoIdea(datosOk().datos, i, estado))
-manejar('pdfCv', () => {
+manejar('pdfCv', (idioma) => {
+  const n = idioma === 'en' ? 'cv-en' : 'cv'
   const r = datosOk()
-  if (!existsSync(join(r.datos, 'cv', 'cv.html'))) throw new Error('Primero guarda la etapa CV')
-  aPdf(join(r.datos, 'cv', 'cv.html'), join(r.datos, 'cv', 'cv.pdf'))
+  if (!existsSync(join(r.datos, 'cv', `${n}.html`))) throw new Error(idioma === 'en' ? 'Primero llena el resumen en inglés y guarda la etapa CV' : 'Primero guarda la etapa CV')
+  aPdf(join(r.datos, 'cv', `${n}.html`), join(r.datos, 'cv', `${n}.pdf`))
 })
 /** Una ruta relativa de la interfaz, solo dentro de la carpeta de datos. */
 function enDatos(rel: unknown): string {
@@ -188,7 +192,7 @@ function enDatos(rel: unknown): string {
   return f
 }
 // Carpetas y documentos; nada ejecutable (.exe, .bat, .lnk…) aunque esté en los datos.
-const ABRIBLES = /\.(pdf|html?|md|txt|docx?|png|jpe?g)$/i
+const ABRIBLES = /\.(pdf|html?|md|txt|csv|docx?|png|jpe?g)$/i
 manejar('abrirArchivo', async (rel) => {
   const f = enDatos(rel)
   if (!existsSync(f)) throw new Error(`No existe ${rel}`)
@@ -205,6 +209,69 @@ ipcMain.handle('leerArchivo', (_e, rel) => {
   if (!/\.(md|html?|txt)$/i.test(f)) throw new Error('Solo texto, Markdown o HTML')
   return existsSync(f) ? readFileSync(f, 'utf8') : null
 })
+// La interfaz edita a mano los .md de mercado/ y de las postulaciones (ficha, entrevistas). El perfil no: sale de sus formularios.
+ipcMain.handle('guardarArchivo', (_e, rel, contenido, nuevo) => {
+  const f = enDatos(rel)
+  if (!/^(mercado|postulaciones)[\\/][^]+\.md$/.test(relative(datosOk().datos, f))) throw new Error('Solo los .md de mercado/ y de las postulaciones')
+  if (nuevo && existsSync(f)) throw new Error(`${rel} ya existe`)
+  mkdirSync(dirname(f), { recursive: true })
+  writeFileSync(f, texto(contenido, 500_000))
+  enviar()
+})
+
+// --- fuentes ---
+const elegir = async (title: string, filters?: Electron.FileFilter[], carpeta = false) => {
+  const r = await dialog.showOpenDialog(win!, { title, filters, properties: carpeta ? ['openDirectory', 'multiSelections'] : ['openFile', 'multiSelections'] })
+  return r.canceled ? [] : r.filePaths
+}
+manejar('agregarFuentes', async (tipo) => {
+  if (!(TIPOS as readonly unknown[]).includes(tipo) || tipo === 'linkedin' || tipo === 'git') throw new Error('dato inválido')
+  copiarArchivos(datosOk().datos, tipo as 'cv', await elegir(tipo === 'cv' ? 'CV y documentos' : 'Archivos para el perfil'))
+})
+manejar('importarLinkedin', async () => {
+  const fs = await elegir('Exportación de LinkedIn (el .zip o sus .csv)', [{ name: 'LinkedIn', extensions: ['zip', 'csv'] }])
+  if (fs.length) importarLinkedin(datosOk().datos, fs)
+})
+manejar('guardarNota', (titulo, txt) => void guardarNota(datosOk().datos, titulo, txt))
+manejar('quitarFuente', (rel) => {
+  const f = enDatos(rel)
+  if (!/^fuentes[\\/](cv|linkedin|git|notas|otros)[\\/][^\\/]+$|^fuentes[\\/][^\\/]+\.(md|txt)$/.test(relative(datosOk().datos, f))) throw new Error('Solo archivos de fuentes/')
+  return shell.trashItem(f) // a la papelera: se puede recuperar
+})
+const lista = (v: unknown) => {
+  if (!Array.isArray(v) || v.length > 50 || !v.every((x) => typeof x === 'string' && x.length < 500)) throw new Error('dato inválido')
+  return [...new Set((v as string[]).map((x) => x.trim()).filter(Boolean))]
+}
+manejar('identidadesGit', (ids) => guardarGit({ ...leerGit(), identidades: lista(ids) }))
+manejar('carpetaGit', async (quitar) => {
+  const g = leerGit()
+  const carpetas = typeof quitar === 'string' ? g.carpetas.filter((c) => c !== quitar) : [...g.carpetas, ...(await elegir('Carpetas con tus repos', undefined, true))]
+  guardarGit({ ...g, carpetas: lista(carpetas) })
+})
+ipcMain.handle('autoresGit', () => autores(leerGit().carpetas))
+manejar('leerGitLocal', () => leerReposLocales(datosOk().datos))
+manejar('conectarGit', async (tipo, host, token) => {
+  if (tipo !== 'github' && tipo !== 'gitlab') throw new Error('dato inválido')
+  const h = tipo === 'github' ? 'https://github.com' : texto(host, 200).trim().replace(/\/$/, '') || 'https://gitlab.com'
+  if (!/^https:\/\//.test(h)) throw new Error('El servidor de GitLab va con https://')
+  const c = { tipo, host: h, token: texto(token, 300).trim() } as Omit<Cuenta, 'usuario'>
+  const usuario = await probarCuenta(c)
+  const g = leerGit()
+  const cuenta = { ...c, usuario }
+  guardarGit({ ...g, cuentas: [...g.cuentas.filter((x) => !(x.tipo === tipo && x.host === h && x.usuario === usuario)), cuenta] })
+  await leerCuenta(datosOk().datos, cuenta)
+})
+manejar('quitarGit', (tipo, usuario) => {
+  const g = leerGit()
+  guardarGit({ ...g, cuentas: g.cuentas.filter((x) => !(x.tipo === tipo && x.usuario === usuario)) })
+})
+manejar('leerCuentasGit', async () => {
+  const d = datosOk().datos
+  const errores: string[] = []
+  for (const c of leerGit().cuentas) await leerCuenta(d, c).catch((e: Error) => errores.push(`${c.usuario}: ${e.message}`))
+  if (errores.length) throw new Error(errores.join(' · '))
+})
+
 ipcMain.handle('historial', (_e, orden) => conDb((db) => historial(db, texto(orden, 5))))
 ipcMain.on('abrir', (_e, url) => {
   // Solo enlaces web: nada de file:// ni protocolos raros desde el renderer.

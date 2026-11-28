@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ArrowLeft, Bot, CalendarClock, Check, ChevronRight, ExternalLink, FileText, FolderOpen, Inbox, KanbanSquare, Mail, Megaphone, Minus, Plus, RefreshCw, UserRound, X } from 'lucide-react'
+import { ArrowLeft, Bot, CalendarClock, Check, ChevronRight, Compass, Database, ExternalLink, FileText, FolderOpen, Inbox, KanbanSquare, Mail, Megaphone, Minus, Pencil, Plus, RefreshCw, Telescope, Trash2, UserRound, X } from 'lucide-react'
 import type { Correo } from '../../core/gmail.ts'
 import type { Pendiente } from '../../core/pendientes.ts'
 import type { Evento, Fila, Tarea } from '../../core/tracker.ts'
@@ -26,17 +26,28 @@ type Estado = {
     cvs: { ruta: string; titulo: string; archivo: string; pdfs: string[] }[]
   }
   linkedin?: {
-    posts: { slug: string; estado: string; pilar: string; fecha: string; imagen: string; texto: string; archivos: string[] }[]
+    posts: { slug: string; estado: string; pilar: string; fecha: string; imagen: string; enlace: string; metricas: string; texto: string; archivos: string[] }[]
     ideas: { fecha: string; idea: string; fuente: string; pilar: string; estado: string }[]
     pilares: string[]
     voz: Record<string, string>
     camposVoz: { id: string; titulo: string; ayuda: string }[]
   }
+  mercado?: string[]
+  fuentes?: {
+    cv: string[]
+    linkedin: Record<string, number>
+    git: string[]
+    notas: string[]
+    otros: string[]
+    identidades: string[]
+    carpetas: string[]
+    cuentas: { tipo: 'github' | 'gitlab'; host: string; usuario: string }[]
+  }
   version?: string
 }
 type Api = {
-  [k in 'cargar' | 'elegirDatos' | 'actualizar' | 'agregar' | 'marcarPendiente' | 'nuevoPendiente' | 'escanear' | 'configurarGmail' | 'quitarGmail' | 'revisado' | 'claude' | 'guardarEtapa' | 'pdfCv' | 'abrirArchivo' | 'guardarPost' | 'nuevoPost' | 'agregarIdea' | 'estadoIdea' | 'guardarVoz']: (...a: unknown[]) => Promise<Estado>
-} & { historial: (orden: string) => Promise<Evento[]>; archivos: (carpeta: string) => Promise<string[]>; leerArchivo: (ruta: string) => Promise<string | null>; abrir: (url: string) => void; alCambiar: (cb: (e: Estado) => void) => () => void }
+  [k in 'cargar' | 'elegirDatos' | 'actualizar' | 'agregar' | 'marcarPendiente' | 'nuevoPendiente' | 'escanear' | 'configurarGmail' | 'quitarGmail' | 'revisado' | 'claude' | 'guardarEtapa' | 'pdfCv' | 'abrirArchivo' | 'guardarPost' | 'nuevoPost' | 'agregarIdea' | 'estadoIdea' | 'guardarVoz' | 'agregarFuentes' | 'importarLinkedin' | 'guardarNota' | 'quitarFuente' | 'identidadesGit' | 'carpetaGit' | 'leerGitLocal' | 'conectarGit' | 'quitarGit' | 'leerCuentasGit']: (...a: unknown[]) => Promise<Estado>
+} & { historial: (orden: string) => Promise<Evento[]>; archivos: (carpeta: string) => Promise<string[]>; leerArchivo: (ruta: string) => Promise<string | null>; guardarArchivo: (ruta: string, texto: string, nuevo?: boolean) => Promise<void>; autoresGit: () => Promise<{ autor: string; commits: number }[]>; abrir: (url: string) => void; alCambiar: (cb: (e: Estado) => void) => () => void }
 const api = (window as unknown as { api: Api }).api
 
 const COLUMNAS = ['Por postular', 'Postulado', 'Entrevista', 'Oferta', 'Cerradas'] as const
@@ -45,9 +56,12 @@ const ESTADOS = ['Oferta', 'Entrevista', 'Postulado', 'Por postular', 'Descartad
 const PROBS = ['Alta', 'Media-alta', 'Media', 'Media-baja', 'Baja', '—']
 const COLOR_PROB: Record<string, string> = { Alta: 'bg-ok/20 text-ok', 'Media-alta': 'bg-ok/10 text-ok', Media: 'bg-muted text-foreground', 'Media-baja': 'bg-muted text-muted-foreground', Baja: 'bg-muted text-muted-foreground' }
 
+export type Vista = 'guia' | 'hoy' | 'tablero' | 'bandeja' | 'fuentes' | 'perfil' | 'cv' | 'mercado' | 'linkedin'
+type Ir = (v: Vista) => void
+
 export function App() {
   const [s, setS] = useState<Estado | null>(null)
-  const [vista, setVista] = useState<'hoy' | 'tablero' | 'bandeja' | 'perfil' | 'cv' | 'linkedin'>('hoy')
+  const [vista, setVista] = useState<Vista>('hoy')
   const [chat, setChat] = useState(false)
   const [abierta, setAbierta] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -56,7 +70,8 @@ export function App() {
   const ir = (v: typeof vista) => (setVista(v), setAbierta(null))
 
   useEffect(() => {
-    void api.cargar().then(setS, (e: Error) => setError(e.message))
+    // Mientras falte lo indispensable, la app abre en la Guía.
+    void api.cargar().then((e) => (setS(e), e.perfil && guia(e).some((x) => !x.ok && !x.opcional) && setVista('guia')), (e: Error) => setError(e.message))
     return api.alCambiar(setS)
   }, [])
 
@@ -93,11 +108,14 @@ export function App() {
     <div className="flex h-full">
       <nav className="flex w-52 shrink-0 flex-col gap-1 border-r border-border bg-sidebar p-3">
         <div className="mb-3 px-2 text-lg font-semibold">otterjobs</div>
+        <Nav activo={vista === 'guia' && !fila} onClick={() => ir('guia')} icono={<Compass />} texto="Guía" n={(s.perfil && guia(s).filter((x) => !x.ok).length) || undefined} />
         <Nav activo={vista === 'hoy' && !fila} onClick={() => ir('hoy')} icono={<CalendarClock />} texto="Hoy" n={vencidas || undefined} alerta />
         <Nav activo={vista === 'tablero' && !fila} onClick={() => ir('tablero')} icono={<KanbanSquare />} texto="Tablero" n={filas.length} />
         <Nav activo={vista === 'bandeja' && !fila} onClick={() => ir('bandeja')} icono={<Inbox />} texto="Bandeja" n={pendientes || undefined} alerta />
+        <Nav activo={vista === 'fuentes' && !fila} onClick={() => ir('fuentes')} icono={<Database />} texto="Fuentes" n={s.perfil?.estado.fuentes || undefined} />
         <Nav activo={vista === 'perfil' && !fila} onClick={() => ir('perfil')} icono={<UserRound />} texto="Perfil" n={s.perfil?.estado.etapas.filter((e) => !e.listo).length || undefined} />
         <Nav activo={vista === 'cv' && !fila} onClick={() => ir('cv')} icono={<FileText />} texto="CV" n={s.perfil?.cvs.length || undefined} />
+        <Nav activo={vista === 'mercado' && !fila} onClick={() => ir('mercado')} icono={<Telescope />} texto="Mercado" n={s.mercado?.length || undefined} />
         <Nav activo={vista === 'linkedin' && !fila} onClick={() => ir('linkedin')} icono={<Megaphone />} texto="LinkedIn" n={s.linkedin?.posts.filter((p) => p.estado === 'aprobado').length || undefined} />
         <div className="mt-auto space-y-1 px-2 text-2xs text-muted-foreground">
           <div className="truncate" title={s.datos}>{s.datos}</div>
@@ -119,7 +137,10 @@ export function App() {
             {vista === 'hoy' && <Hoy s={s} abrir={setAbierta} hacer={hacer} />}
             {vista === 'tablero' && <Tablero filas={filas} abrir={setAbierta} hacer={hacer} />}
             {vista === 'bandeja' && <Bandeja s={s} abrir={setAbierta} hacer={hacer} ocupado={ocupado} />}
-            {vista === 'perfil' && s.perfil && <Perfil s={s} hacer={hacer} ocupado={ocupado} />}
+            {vista === 'guia' && s.perfil && <Guia s={s} hacer={hacer} ir={ir} />}
+            {vista === 'fuentes' && s.fuentes && <Fuentes s={s} hacer={hacer} ocupado={ocupado} ir={ir} />}
+            {vista === 'perfil' && s.perfil && <Perfil s={s} hacer={hacer} ocupado={ocupado} ir={ir} />}
+            {vista === 'mercado' && <Mercado archivos={s.mercado ?? []} hacer={hacer} />}
             {vista === 'cv' && s.perfil && <MisCv cvs={s.perfil.cvs} hacer={hacer} />}
             {vista === 'linkedin' && s.linkedin && <Linkedin li={s.linkedin} hacer={hacer} ocupado={ocupado} />}
           </>
@@ -394,6 +415,12 @@ function Detalle({ fila, cerrar, hacer }: { fila: Fila; cerrar: () => void; hace
         </div>
         <Campo t="Carpeta"><input className="campo" value={d.ficha} onChange={set('ficha')} /></Campo>
         {fila.ficha && <ArchivosPostulacion carpeta={fila.ficha} hacer={hacer} />}
+        {fila.ficha && (
+          <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            Lo que aprendas en esta postulación va en «## Aprendizajes» de ficha.md (edítala arriba). Para que llegue a tu perfil:
+            <Boton tam="xs" variante="outline" onClick={() => hacer(() => api.claude('perfil', 'aprendizajes'))}><Bot /> Pasar aprendizajes al perfil</Boton>
+          </p>
+        )}
         {eventos.length > 0 && (
           <div className="space-y-1">
             <span className="text-2xs font-medium text-muted-foreground">Historial</span>
@@ -498,7 +525,38 @@ type Fila_ = Record<string, string>
 const NOMBRE: Record<Etapa, string> = { hechos: 'Hechos', preferencias: 'Preferencias', mercado: 'Mercado', marca: 'Marca', alertas: 'Alertas', cv: 'CV', perfiles: 'Perfiles', revision: 'Revisión' }
 const vacia = (c: CampoForm) => Object.fromEntries((c.campos ?? []).map((x) => [x.k, ''])) as Fila_
 
-function Perfil({ s, hacer, ocupado }: { s: Estado; hacer: Hacer; ocupado: boolean }) {
+/** El orden para armar el perfil: primero el material, después lo que Claude saca de él, y al final las etapas que dependen de las anteriores. */
+function Pasos({ p, etapa, setEtapa, hacer, ir }: { p: NonNullable<Estado['perfil']>; etapa: Etapa; setEtapa: (e: Etapa) => void; hacer: Hacer; ir: Ir }) {
+  const listo = (e: Etapa) => p.estado.etapas.find((x) => x.id === e)!.listo
+  const base: Etapa[] = ['hechos', 'preferencias', 'mercado', 'marca', 'alertas']
+  const pasos = [
+    { t: 'Fuentes', d: `${p.estado.fuentes} archivos`, ok: p.estado.fuentes > 0, ir: () => ir('fuentes') },
+    { t: 'Importar con Claude', d: conDatos(p, 'hechos') ? 'Hechos con datos' : 'Claude lee tus fuentes', ok: conDatos(p, 'hechos'), ir: () => hacer(() => api.claude('perfil', 'importar')) },
+    { t: 'Revisar etapas', d: `${base.filter(listo).length} de ${base.length} listas`, ok: base.every(listo), ir: () => setEtapa(base.find((e) => !listo(e)) ?? 'hechos') },
+    { t: 'CV y perfiles', d: `${(['cv', 'perfiles'] as const).filter(listo).length} de 2 listas`, ok: listo('cv') && listo('perfiles'), ir: () => setEtapa(listo('cv') ? 'perfiles' : 'cv') },
+    { t: 'Revisión', d: listo('revision') ? 'Evaluado' : 'Evalúa el CV', ok: listo('revision'), ir: () => setEtapa('revision') }
+  ]
+  const sigue = pasos.findIndex((x) => !x.ok)
+  const actual = etapa === 'revision' ? 4 : etapa === 'cv' || etapa === 'perfiles' ? 3 : 2
+  return (
+    <ol className="mb-5 flex gap-2">
+      {pasos.map((x, i) => (
+        <li key={x.t} className="min-w-0 flex-1">
+          <button onClick={x.ir} className={`flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left ${i === sigue ? 'border-primary bg-primary/10' : i === actual ? 'border-border bg-accent' : 'border-border hover:bg-accent/60'}`}>
+            <span className={`grid size-6 shrink-0 place-items-center rounded-full text-xs font-semibold ${x.ok ? 'bg-ok/20 text-ok' : 'bg-muted text-muted-foreground'}`}>{x.ok ? <Check className="size-3.5" /> : i + 1}</span>
+            <span className="min-w-0">
+              <span className="block truncate text-sm">{x.t}</span>
+              <span className="block truncate text-2xs text-muted-foreground">{i === sigue ? 'Sigue · ' : ''}{x.d}</span>
+            </span>
+          </button>
+        </li>
+      ))}
+    </ol>
+  )
+}
+const conDatos = (p: NonNullable<Estado['perfil']>, e: Etapa) => Object.values(p.valores[e] ?? {}).some((v) => (Array.isArray(v) ? v.length : String(v).trim()))
+
+function Perfil({ s, hacer, ocupado, ir }: { s: Estado; hacer: Hacer; ocupado: boolean; ir: Ir }) {
   const p = s.perfil!
   const [etapa, setEtapa] = useState<Etapa>(() => p.estado.siguiente ?? 'hechos')
   const e = p.estado.etapas.find((x) => x.id === etapa)!
@@ -507,12 +565,14 @@ function Perfil({ s, hacer, ocupado }: { s: Estado; hacer: Hacer; ocupado: boole
   const vacio = !Object.values(p.valores[etapa] ?? {}).some((v) => (Array.isArray(v) ? v.length : String(v).trim()))
   const conClaude = () => hacer(() => api.claude('perfil', etapa))
   return (
+    <div>
+    <Pasos p={p} etapa={etapa} setEtapa={(x) => (setEtapa(x), setVer(false))} hacer={hacer} ir={ir} />
     <div className="flex gap-5">
       <div className="w-60 shrink-0 space-y-3">
         <Titulo>Tu perfil</Titulo>
         <p className="text-xs text-muted-foreground">
           {p.estado.fuentes} archivos en fuentes/ ·{' '}
-          <button className="underline hover:text-foreground" onClick={() => hacer(() => api.abrirArchivo('fuentes'))}>abrir</button>
+          <button className="underline hover:text-foreground" onClick={() => ir('fuentes')}>ver fuentes</button>
         </p>
         <div className="space-y-0.5">
           {p.estado.etapas.map((x) => (
@@ -562,14 +622,20 @@ function Perfil({ s, hacer, ocupado }: { s: Estado; hacer: Hacer; ocupado: boole
         </>}
       </div>
     </div>
+    </div>
   )
 }
 
 function Formulario({ etapa, p, listo, hacer, ocupado }: { etapa: Etapa; p: NonNullable<Estado['perfil']>; listo: boolean; hacer: Hacer; ocupado: boolean }) {
   const f = p.formulario[etapa]
-  const [v, setV] = useState<Valores>(() =>
-    etapa === 'revision' ? { fecha: new Date().toISOString().slice(0, 10) } : (p.valores[etapa] ?? Object.fromEntries(f.campos.filter((c) => c.inicial).map((c) => [c.k, c.inicial!])))
-  )
+  const [v, setV] = useState<Valores>(() => {
+    if (etapa === 'revision') return { fecha: new Date().toISOString().slice(0, 10) }
+    const x = p.valores[etapa] ?? Object.fromEntries(f.campos.filter((c) => c.inicial).map((c) => [c.k, c.inicial!]))
+    // El CV en inglés va cargo por cargo: las filas parten con las empresas de «Hechos», en su orden.
+    const exp = p.valores.hechos?.experiencia
+    if (etapa === 'cv' && !Array.isArray(x.experienciaEn) && Array.isArray(exp)) return { ...x, experienciaEn: exp.map((e) => ({ empresa: e.empresa ?? '', cargo: '', jornada: '', contexto: '', logros: '' })) }
+    return x
+  })
   const guardar = (lista: boolean) => hacer(() => api.guardarEtapa(etapa, v, lista))
   const alertas = (v.alertas as Fila_[] | undefined) ?? []
   return (
@@ -594,6 +660,10 @@ function Formulario({ etapa, p, listo, hacer, ocupado }: { etapa: Etapa; p: NonN
             <Boton tam="xs" variante="outline" onClick={() => hacer(() => api.abrirArchivo('cv/cv.html'))}><ExternalLink /> Ver CV</Boton>
             <Boton tam="xs" variante="outline" disabled={ocupado} onClick={() => hacer(() => api.pdfCv())}>Exportar PDF</Boton>
             {p.pdf && <Boton tam="xs" variante="ghost" onClick={() => hacer(() => api.abrirArchivo('cv/cv.pdf'))}>Abrir PDF</Boton>}
+            {typeof v.resumenEn === 'string' && v.resumenEn.trim() && <>
+              <Boton tam="xs" variante="outline" onClick={() => hacer(() => api.abrirArchivo('cv/cv-en.html'))}><ExternalLink /> Ver CV en inglés</Boton>
+              <Boton tam="xs" variante="outline" disabled={ocupado} onClick={() => hacer(() => api.pdfCv('en'))}>PDF en inglés</Boton>
+            </>}
           </div>
         </div>
       )}
@@ -650,13 +720,37 @@ function CampoPerfil({ c, v, set }: { c: CampoForm; v: Valores[string] | undefin
 }
 
 /** Muestra un archivo de los datos: HTML (el CV) en un iframe sin scripts y Markdown con un lector mínimo. */
-function Visor({ ruta, alto = 'h-[70vh]' }: { ruta: string; alto?: string }) {
+function Visor({ ruta, alto = 'h-[70vh]', editable = false }: { ruta: string; alto?: string; editable?: boolean }) {
   const [t, setT] = useState<string | null | undefined>()
+  const [editando, setEditando] = useState<string | null>(null)
+  const [error, setError] = useState('')
   useEffect(() => void api.leerArchivo(ruta).then(setT, () => setT(null)), [ruta])
   if (t === undefined) return <p className="text-xs text-muted-foreground">Cargando…</p>
   if (t === null) return <p className="text-xs text-muted-foreground">{ruta} todavía no existe.</p>
   if (/\.html?$/i.test(ruta)) return <iframe title={ruta} sandbox="" srcDoc={t} className={`w-full rounded-md border border-border bg-white ${alto}`} />
-  return <div className={`overflow-auto rounded-md border border-border p-4 ${alto}`}>{/\.md$/i.test(ruta) ? <Markdown texto={t} /> : <pre className="text-xs whitespace-pre-wrap">{t}</pre>}</div>
+  const guardar = () => api.guardarArchivo(ruta, editando!).then(() => (setT(editando), setEditando(null), setError('')), (e: Error) => setError(e.message.replace(/^Error invoking remote method '\w+': (Error: )?/, '')))
+  return (
+    <div className="space-y-2">
+      {editable && /\.md$/i.test(ruta) && (
+        <div className="flex items-center gap-2">
+          {editando === null ? (
+            <Boton tam="xs" variante="outline" onClick={() => setEditando(t)}><Pencil /> Editar</Boton>
+          ) : (
+            <>
+              <Boton tam="xs" disabled={editando === t} onClick={() => void guardar()}>Guardar</Boton>
+              <Boton tam="xs" variante="ghost" onClick={() => setEditando(null)}>Cancelar</Boton>
+            </>
+          )}
+          {error && <span className="text-xs text-destructive">{error}</span>}
+        </div>
+      )}
+      {editando !== null ? (
+        <textarea className={`campo font-mono text-xs leading-relaxed ${alto}`} value={editando} onChange={(e) => setEditando(e.target.value)} />
+      ) : (
+        <div className={`overflow-auto rounded-md border border-border p-4 ${alto}`}>{/\.md$/i.test(ruta) ? <Markdown texto={t} /> : <pre className="text-xs whitespace-pre-wrap">{t}</pre>}</div>
+      )}
+    </div>
+  )
 }
 
 /** Markdown de los archivos del perfil: títulos, listas, tablas, negrita y código. Todo como texto de React, sin HTML crudo. */
@@ -716,7 +810,7 @@ function ArchivosPostulacion({ carpeta, hacer }: { carpeta: string; hacer: Hacer
         )}
         <Boton tam="xs" variante="ghost" onClick={() => hacer(() => api.abrirArchivo(carpeta))}><FolderOpen /> Carpeta</Boton>
       </div>
-      {ver && <Visor ruta={`${carpeta}/${ver}`} />}
+      {ver && <Visor key={ver} ruta={`${carpeta}/${ver}`} editable />}
     </div>
   )
 }
@@ -810,7 +904,7 @@ function Posts({ li, hacer, ocupado }: { li: Li; hacer: Hacer; ocupado: boolean 
           ))}
         </div>
       </div>
-      {p ? <EditorPost key={p.slug + p.texto + p.estado + p.pilar + p.fecha} p={p} pilares={li.pilares} hacer={hacer} ocupado={ocupado} /> : <p className="text-sm text-muted-foreground">Todavía no hay posts. Crea uno o pídele el de la semana a Claude.</p>}
+      {p ? <EditorPost key={p.slug + p.texto + p.estado + p.pilar + p.fecha + p.enlace + p.metricas} p={p} pilares={li.pilares} hacer={hacer} ocupado={ocupado} /> : <p className="text-sm text-muted-foreground">Todavía no hay posts. Crea uno o pídele el de la semana a Claude.</p>}
     </div>
   )
 }
@@ -849,6 +943,13 @@ function EditorPost({ p, pilares, hacer, ocupado }: { p: PostLi; pilares: string
         <Boton variante="outline" onClick={() => api.abrir('https://www.linkedin.com/feed/?shareActive=true')}><ExternalLink /> Abrir LinkedIn</Boton>
         {p.estado === 'aprobado' && <Boton variante="ghost" onClick={() => guardar({ estado: 'publicado' })}><Check /> Ya lo publiqué</Boton>}
       </div>
+      {p.estado === 'publicado' && (
+        <div className="flex flex-wrap items-center gap-2">
+          <input className="campo min-w-0 flex-1" placeholder="Enlace al post publicado" defaultValue={p.enlace} onBlur={(e) => e.target.value !== p.enlace && guardar({ enlace: e.target.value })} />
+          {p.enlace && <Boton tam="xs" variante="ghost" onClick={() => api.abrir(p.enlace)}><ExternalLink /></Boton>}
+          <input className="campo min-w-0 flex-1" placeholder="Métricas: 1.200 impresiones · 30 reacciones · 4 comentarios" defaultValue={p.metricas} onBlur={(e) => e.target.value !== p.metricas && guardar({ metricas: e.target.value })} />
+        </div>
+      )}
       {(p.archivos.length > 0 || (p.imagen && p.imagen !== 'ninguna')) && (
         <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           <span>Imagen: {p.imagen || '—'}</span>
@@ -938,6 +1039,260 @@ function Voz({ li, hacer, ocupado }: { li: Li; hacer: Hacer; ocupado: boolean })
         <Boton disabled={!cambio || ocupado} onClick={() => hacer(() => api.guardarVoz(v))}>Guardar</Boton>
         <Boton variante="ghost" onClick={() => hacer(() => api.abrirArchivo('linkedin/voz.md'))}><ExternalLink /> Ver el archivo</Boton>
       </div>
+    </div>
+  )
+}
+
+// --- Guía ---
+
+type PasoGuia = { grupo: string; t: string; d: string; ok: boolean; opcional?: boolean; boton: string; accion: (hacer: Hacer, ir: Ir) => void }
+
+/** Todo lo que hay que configurar, en el orden en que una cosa alimenta a la siguiente. Cada paso se marca solo cuando está hecho. */
+function guia(s: Estado): PasoGuia[] {
+  const p = s.perfil!
+  const f = s.fuentes
+  const listo = (e: Etapa) => p.estado.etapas.find((x) => x.id === e)!.listo
+  const base: Etapa[] = ['hechos', 'preferencias', 'mercado', 'marca', 'alertas']
+  const ir = (v: Vista) => (_: Hacer, i: Ir) => i(v)
+  return [
+    { grupo: '1 · Tu material', t: 'CV y documentos', d: 'Tu CV en PDF (el más reciente y los antiguos), certificados, cartas de recomendación o evaluaciones. Se copian a fuentes/cv/ de tu carpeta de datos, que no se publica.', ok: !!f?.cv.length, boton: 'Agregar en Fuentes', accion: ir('fuentes') },
+    { grupo: '1 · Tu material', t: 'Exportación de LinkedIn', d: 'En LinkedIn: Configuración › Privacidad de datos › Obtener una copia de tus datos (llega por correo en minutos o un día). Se guardan solo los archivos sobre ti: cargos, educación, habilidades, recomendaciones y posts. Mensajes y contactos se descartan.', ok: !!f && Object.keys(f.linkedin).length > 0, boton: 'Importar en Fuentes', accion: ir('fuentes') },
+    { grupo: '1 · Tu material', t: 'Tus repos (git, GitHub o GitLab)', d: 'Tus correos de git y las carpetas donde están tus repos, y si quieres una cuenta de GitHub o GitLab con un token de solo lectura (incluye repos privados). Quedan resúmenes de tus commits y PRs en fuentes/git/; el token queda solo en este computador.', ok: !!f?.git.length, opcional: true, boton: 'Configurar en Fuentes', accion: ir('fuentes') },
+    { grupo: '1 · Tu material', t: 'Gmail', d: 'Lee (solo lee) los correos de reclutadores y empresas, para la Bandeja y para avisarte de respuestas. Una contraseña de aplicación por cuenta; puedes conectar varias.', ok: !!s.gmail?.length, opcional: true, boton: 'Conectar en Bandeja', accion: ir('bandeja') },
+    { grupo: '2 · Tu perfil', t: 'Importar tu material al perfil', d: 'Claude lee fuentes/ y llena los formularios del perfil (hechos, preferencias, marca…) sin inventar: lo dudoso queda «por confirmar» y lo sensible fuera. Si prefieres, llénalo tú a mano en Perfil.', ok: conDatos(p, 'hechos'), boton: 'Importar con Claude', accion: (h) => h(() => api.claude('perfil', 'importar')) },
+    { grupo: '2 · Tu perfil', t: 'Revisar y aprobar las etapas', d: `Hechos, preferencias, mercado, marca y alertas. Revisa cada una en su formulario y márcala lista: es la base de todo lo que se escribe después. Van ${base.filter(listo).length} de ${base.length}.`, ok: base.every(listo), boton: 'Ir a Perfil', accion: ir('perfil') },
+    { grupo: '2 · Tu perfil', t: 'CV base (y en inglés)', d: 'Se genera desde tus hechos: resumen y competencias, y si llenas los campos en inglés, también cv/cv-en.html. El PDF se exporta desde la etapa CV; todos tus CV se ven en la sección CV.', ok: listo('cv'), boton: 'Ir a la etapa CV', accion: ir('perfil') },
+    { grupo: '2 · Tu perfil', t: 'Perfiles de LinkedIn y portales', d: 'Titular, «Acerca de», aptitudes y experiencia, coherentes con el CV. Los pegas tú en cada portal.', ok: listo('perfiles'), boton: 'Ir a Perfil', accion: ir('perfil') },
+    { grupo: '2 · Tu perfil', t: 'Primera evaluación del CV', d: 'Pásalo por una herramienta (Jobscan u otra) o por un reclutador y registra el puntaje y los hallazgos en la etapa Revisión.', ok: listo('revision'), boton: 'Ir a Revisión', accion: ir('perfil') },
+    { grupo: '3 · Postular', t: 'Primer barrido de ofertas', d: 'En Mercado: Claude busca ofertas abiertas en tus portales, las ordena por probabilidad y tú apruebas cuáles entran al Tablero. También puedes escribir el barrido a mano.', ok: !!s.mercado?.some((m) => /oportunidades/.test(m)), boton: 'Ir a Mercado', accion: ir('mercado') },
+    { grupo: '3 · Postular', t: 'Postulaciones en el Tablero', d: 'Cada postulación con su estado, vencimiento y carpeta (ficha, CV adaptado, entrevistas). Desde su detalle: preparar postulación, mensaje, evaluar oferta, preparar entrevista. Hoy te muestra lo que vence.', ok: !!s.filas?.length, boton: 'Ir al Tablero', accion: ir('tablero') },
+    { grupo: '4 · LinkedIn', t: 'Tu voz', d: 'Pega 2 o 3 textos tuyos escritos sin IA: los posts se escriben con tu forma de escribir, no con la de Claude.', ok: !!s.linkedin?.voz.textos?.trim(), opcional: true, boton: 'Ir a LinkedIn', accion: ir('linkedin') },
+    { grupo: '4 · LinkedIn', t: 'Primer post', d: 'Un post por semana desde tu banco de ideas. La app no publica: lo copias y lo pegas tú, y después anotas el enlace y las métricas.', ok: !!s.linkedin?.posts.some((x) => x.estado === 'publicado'), opcional: true, boton: 'Ir a LinkedIn', accion: ir('linkedin') }
+  ]
+}
+
+function Guia({ s, hacer, ir }: { s: Estado; hacer: Hacer; ir: Ir }) {
+  const pasos = guia(s)
+  const sigue = pasos.find((x) => !x.ok && !x.opcional) ?? pasos.find((x) => !x.ok)
+  const grupos = [...new Set(pasos.map((x) => x.grupo))]
+  return (
+    <div className="max-w-3xl space-y-5">
+      <div className="space-y-2">
+        <Titulo>Guía: de cero a postular</Titulo>
+        <p className="text-sm text-muted-foreground">
+          Sigue los pasos en orden: cada uno usa lo del anterior. Se marcan solos cuando están hechos. Todo se hace desde la app; Claude (el botón de abajo a la derecha) es opcional y solo lee y escribe en tu carpeta de datos, que es privada: nada se publica ni se envía sin ti.
+        </p>
+        <p className="text-xs text-muted-foreground">{pasos.filter((x) => x.ok).length} de {pasos.length} hechos · carpeta de datos: {s.datos}</p>
+      </div>
+      {grupos.map((g) => (
+        <section key={g} className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase text-muted-foreground">{g}</h3>
+          <ol className="space-y-2">
+            {pasos.filter((x) => x.grupo === g).map((x) => (
+              <li key={x.t} className={`flex gap-3 rounded-lg border bg-card p-3 ${x === sigue ? 'border-primary' : 'border-border'}`}>
+                <span className={`mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-xs ${x.ok ? 'bg-ok/20 text-ok' : 'bg-muted text-muted-foreground'}`}>{x.ok ? <Check className="size-3.5" /> : '·'}</span>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="text-sm font-medium">{x.t}{x.opcional && <span className="ml-2 text-2xs font-normal text-muted-foreground">opcional</span>}{x === sigue && <span className="ml-2 text-2xs font-normal text-primary">sigue</span>}</div>
+                  <p className="text-xs text-muted-foreground">{x.d}</p>
+                </div>
+                <Boton tam="xs" variante={x === sigue ? 'default' : 'outline'} className="self-center" onClick={() => x.accion(hacer, ir)}>{x.boton}</Boton>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ))}
+      <section className="space-y-1 rounded-lg border border-border p-3 text-xs text-muted-foreground">
+        <p className="font-medium text-foreground">Después, cada semana</p>
+        <p>Hoy: lo que vence y lo pendiente · Bandeja: respuestas de empresas · Mercado: un barrido nuevo · LinkedIn: un post · Perfil: pasa los aprendizajes de tus entrevistas (desde cada postulación) para que el CV y las respuestas mejoren.</p>
+      </section>
+    </div>
+  )
+}
+
+// --- Fuentes ---
+
+const nombre = (r: string) => r.split('/').pop()!
+
+function ListaArchivos({ rutas, hacer, vacio }: { rutas: string[]; hacer: Hacer; vacio: string }) {
+  if (!rutas.length) return <p className="text-xs text-muted-foreground">{vacio}</p>
+  return (
+    <ul className="space-y-0.5">
+      {rutas.map((r) => (
+        <li key={r} className="flex items-center gap-2 text-sm">
+          <button className="min-w-0 flex-1 truncate text-left hover:underline" onClick={() => hacer(() => api.abrirArchivo(r))}>{nombre(r)}</button>
+          <button title="Quitar (va a la papelera)" className="text-muted-foreground hover:text-destructive" onClick={() => hacer(() => api.quitarFuente(r))}><Trash2 className="size-3.5" /></button>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+const Tarjeta = ({ t, d, children }: { t: string; d: ReactNode; children: ReactNode }) => (
+  <section className="space-y-3 rounded-lg border border-border bg-card p-4">
+    <div>
+      <h3 className="text-sm font-semibold">{t}</h3>
+      <p className="mt-0.5 text-xs text-muted-foreground">{d}</p>
+    </div>
+    {children}
+  </section>
+)
+
+/** El material del que sale el perfil. Todo queda en fuentes/ de la carpeta de datos (no se publica); los tokens, en este computador. */
+function Fuentes({ s, hacer, ocupado, ir }: { s: Estado; hacer: Hacer; ocupado: boolean; ir: Ir }) {
+  const f = s.fuentes!
+  const [nota, setNota] = useState({ titulo: '', texto: '' })
+  const csv = Object.entries(f.linkedin)
+  return (
+    <div className="max-w-4xl space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex-1">
+          <Titulo>Fuentes</Titulo>
+          <p className="text-xs text-muted-foreground">De aquí sale tu perfil. Todo queda en fuentes/ de tu carpeta de datos, que no se versiona ni se publica. Lo que se genere a partir de esto deja fuera lo sensible (cifras internas, datos de clientes, nombres de terceros).</p>
+        </div>
+        <Boton tam="sm" onClick={() => hacer(() => api.claude('perfil', 'importar'))}><Bot /> Importar al perfil con Claude</Boton>
+        <Boton tam="sm" variante="outline" onClick={() => ir('perfil')}>Llenar a mano en Perfil</Boton>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Tarjeta t="CV y documentos" d="Tu CV en PDF (el actual y los antiguos), certificados, cartas de recomendación, evaluaciones de desempeño.">
+          <ListaArchivos rutas={f.cv} hacer={hacer} vacio="Todavía no hay documentos." />
+          <Boton tam="xs" variante="outline" disabled={ocupado} onClick={() => hacer(() => api.agregarFuentes('cv'))}><Plus /> Agregar archivos</Boton>
+        </Tarjeta>
+        <Tarjeta t="LinkedIn" d={<>Pide tu copia en LinkedIn (Configuración › Privacidad de datos › Obtener una copia de tus datos; la «completa» trae más) y elige aquí el .zip. Se guardan solo los archivos sobre ti; mensajes, contactos e invitaciones se descartan.</>}>
+          {csv.length ? <p className="text-xs">{csv.map(([k, n]) => `${k} (${n})`).join(' · ')}</p> : <p className="text-xs text-muted-foreground">Sin importar.</p>}
+          <div className="flex flex-wrap gap-2">
+            <Boton tam="xs" variante="outline" onClick={() => api.abrir('https://www.linkedin.com/mypreferences/d/download-my-data')}><ExternalLink /> Pedir mi copia</Boton>
+            <Boton tam="xs" variante="outline" disabled={ocupado} onClick={() => hacer(() => api.importarLinkedin())}><Plus /> Importar .zip</Boton>
+            {csv.length > 0 && <Boton tam="xs" variante="ghost" onClick={() => hacer(() => api.abrirArchivo('fuentes/linkedin'))}><FolderOpen /> Carpeta</Boton>}
+          </div>
+        </Tarjeta>
+      </div>
+      <Git f={f} hacer={hacer} ocupado={ocupado} />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Tarjeta t="Notas y texto pegado" d="Lo que no es un archivo: tu perfil de otro portal, una evaluación, apuntes de lo que hiciste en un trabajo.">
+          <ListaArchivos rutas={f.notas} hacer={hacer} vacio="Sin notas." />
+          <input className="campo" placeholder="Título (p. ej. «Perfil en otro portal»)" value={nota.titulo} onChange={(e) => setNota({ ...nota, titulo: e.target.value })} />
+          <textarea className="campo" rows={4} placeholder="Pega el texto" value={nota.texto} onChange={(e) => setNota({ ...nota, texto: e.target.value })} />
+          <Boton tam="xs" variante="outline" disabled={!nota.titulo.trim() || !nota.texto.trim() || ocupado} onClick={() => hacer(() => api.guardarNota(nota.titulo, nota.texto).then((r) => (setNota({ titulo: '', texto: '' }), r)))}><Plus /> Guardar nota</Boton>
+        </Tarjeta>
+        <div className="space-y-4">
+          <Tarjeta t="Gmail" d="Correos de reclutadores y empresas (solo lectura). Se configura y se lee en la Bandeja.">
+            <p className="text-xs">{s.gmail?.length ? s.gmail.join(' · ') : 'Sin cuentas.'}</p>
+            <Boton tam="xs" variante="outline" onClick={() => ir('bandeja')}><Mail /> Ir a la Bandeja</Boton>
+          </Tarjeta>
+          <Tarjeta t="Otros archivos" d="Lo que no calce arriba: capturas, presentaciones, chats exportados.">
+            <ListaArchivos rutas={f.otros} hacer={hacer} vacio="Nada." />
+            <Boton tam="xs" variante="outline" disabled={ocupado} onClick={() => hacer(() => api.agregarFuentes('otros'))}><Plus /> Agregar archivos</Boton>
+          </Tarjeta>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Git({ f, hacer, ocupado }: { f: NonNullable<Estado['fuentes']>; hacer: Hacer; ocupado: boolean }) {
+  const [ids, setIds] = useState(f.identidades.join('\n'))
+  const [sugeridos, setSugeridos] = useState<{ autor: string; commits: number }[]>()
+  const [c, setC] = useState({ tipo: 'github' as 'github' | 'gitlab', host: 'https://gitlab.com', token: '' })
+  const lista = ids.split(/\r?\n/).map((x) => x.trim()).filter(Boolean)
+  const cambio = lista.join('\n') !== f.identidades.join('\n')
+  return (
+    <Tarjeta t="Git: tus commits y PRs" d="Lo que construiste, sacado de tus repos (públicos y privados): periodo, volumen, lenguajes y mensajes de tus commits, y tus PRs o merge requests. Va a fuentes/git/ como resumen; no se copia código.">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-2">
+          <div className="text-xs font-medium">Repos en este computador</div>
+          <ul className="space-y-0.5 text-sm">
+            {f.carpetas.map((x) => (
+              <li key={x} className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 truncate" title={x}>{x}</span>
+                <button title="Quitar" className="text-muted-foreground hover:text-destructive" onClick={() => hacer(() => api.carpetaGit(x))}><X className="size-3.5" /></button>
+              </li>
+            ))}
+          </ul>
+          <Boton tam="xs" variante="outline" onClick={() => hacer(() => api.carpetaGit())}><FolderOpen /> Agregar carpeta</Boton>
+          <Campo t="Tus correos o nombres de git (uno por línea)">
+            <textarea className="campo" rows={3} value={ids} onChange={(e) => setIds(e.target.value)} placeholder="tu.correo@empresa.com" />
+          </Campo>
+          <div className="flex flex-wrap gap-2">
+            <Boton tam="xs" variante="outline" disabled={!cambio} onClick={() => hacer(() => api.identidadesGit(lista))}>Guardar correos</Boton>
+            <Boton tam="xs" variante="ghost" disabled={!f.carpetas.length} onClick={() => void api.autoresGit().then(setSugeridos)}>¿Cuáles soy yo?</Boton>
+            <Boton tam="xs" disabled={ocupado || !f.carpetas.length || !f.identidades.length} onClick={() => hacer(() => api.leerGitLocal())}><RefreshCw className={ocupado ? 'animate-spin' : ''} /> Leer mis repos</Boton>
+          </div>
+          {sugeridos && (
+            <div className="flex flex-wrap gap-1">
+              {sugeridos.filter((x) => !lista.includes(x.autor)).map((x) => (
+                <button key={x.autor} className="rounded border border-border px-1.5 py-0.5 text-2xs hover:bg-accent" onClick={() => setIds([...lista, x.autor].join('\n'))}>+ {x.autor} ({x.commits})</button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="space-y-2">
+          <div className="text-xs font-medium">Cuentas (incluye repos privados)</div>
+          <ul className="space-y-0.5 text-sm">
+            {f.cuentas.map((x) => (
+              <li key={x.tipo + x.usuario} className="flex items-center gap-2">
+                <span className="flex-1">{x.tipo === 'github' ? 'GitHub' : `GitLab (${x.host.replace(/^https:\/\//, '')})`} · {x.usuario}</span>
+                <button title="Quitar" className="text-muted-foreground hover:text-destructive" onClick={() => hacer(() => api.quitarGit(x.tipo, x.usuario))}><X className="size-3.5" /></button>
+              </li>
+            ))}
+          </ul>
+          <div className="flex gap-2">
+            <select className="campo w-auto" value={c.tipo} onChange={(e) => setC({ ...c, tipo: e.target.value as 'github' | 'gitlab' })}>
+              <option value="github">GitHub</option>
+              <option value="gitlab">GitLab</option>
+            </select>
+            {c.tipo === 'gitlab' && <input className="campo" value={c.host} onChange={(e) => setC({ ...c, host: e.target.value })} />}
+          </div>
+          <p className="text-2xs text-muted-foreground">
+            {c.tipo === 'github' ? 'Token «fine-grained» de solo lectura: todos tus repos, permisos Contents y Metadata en «Read-only».' : 'Token personal con el permiso read_api.'} Queda solo en este computador.{' '}
+            <button className="underline" onClick={() => api.abrir(c.tipo === 'github' ? 'https://github.com/settings/personal-access-tokens/new' : `${c.host.replace(/\/$/, '')}/-/user_settings/personal_access_tokens`)}>Crear token</button>
+          </p>
+          <input className="campo font-mono" type="password" placeholder="Token" value={c.token} onChange={(e) => setC({ ...c, token: e.target.value })} />
+          <div className="flex flex-wrap gap-2">
+            <Boton tam="xs" disabled={!c.token.trim() || ocupado} onClick={() => hacer(() => api.conectarGit(c.tipo, c.host, c.token).then((r) => (setC({ ...c, token: '' }), r)))}><RefreshCw className={ocupado ? 'animate-spin' : ''} /> Conectar y leer</Boton>
+            {f.cuentas.length > 0 && <Boton tam="xs" variante="ghost" disabled={ocupado} onClick={() => hacer(() => api.leerCuentasGit())}>Volver a leer las cuentas</Boton>}
+          </div>
+        </div>
+      </div>
+      <div className="space-y-1 border-t border-border pt-2">
+        <div className="text-xs font-medium">Resúmenes ({f.git.length})</div>
+        <ListaArchivos rutas={f.git} hacer={hacer} vacio="Todavía no hay resúmenes: agrega una carpeta y tus correos, o conecta una cuenta." />
+      </div>
+    </Tarjeta>
+  )
+}
+
+// --- Mercado ---
+
+/** Barridos de ofertas y reportes de mercado (mercado/*.md): se leen, se editan a mano o se piden a Claude (/buscar). */
+function Mercado({ archivos, hacer }: { archivos: string[]; hacer: Hacer }) {
+  const [sel, setSel] = useState(archivos[0])
+  const ver = archivos.includes(sel) ? sel : archivos[0]
+  const nuevo = () => {
+    const f = `mercado/oportunidades-${new Date().toISOString().slice(0, 10)}.md`
+    hacer(() => api.guardarArchivo(f, `# Oportunidades ${f.slice(22, 32)}\n\n## Criterio de calce\n\n\n## Nuevas\n\n| Prob. | Empresa | Cargo | Por qué calza | Ojo |\n|---|---|---|---|---|\n\n## Descartadas\n\n`, true).then(() => (setSel(f), api.cargar())))
+  }
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex-1">
+          <Titulo>Mercado</Titulo>
+          <p className="text-xs text-muted-foreground">Tus barridos de ofertas y reportes. Las que te interesen, agrégalas al Tablero. Las bandas salariales y los portales están en Perfil › Mercado.</p>
+        </div>
+        <Boton tam="sm" onClick={() => hacer(() => api.claude('buscar'))}><Bot /> Buscar ofertas con Claude</Boton>
+        <Boton tam="sm" variante="outline" onClick={nuevo}><Plus /> Barrido a mano</Boton>
+      </div>
+      {archivos.length ? (
+        <div className="flex gap-4">
+          <div className="w-60 shrink-0 space-y-0.5">
+            {archivos.map((f) => (
+              <button key={f} onClick={() => setSel(f)} className={`block w-full truncate rounded-md px-2 py-1.5 text-left text-sm ${f === ver ? 'bg-accent' : 'hover:bg-accent/60'}`}>{nombre(f).replace(/\.md$/, '')}</button>
+            ))}
+          </div>
+          <div className="min-w-0 max-w-4xl flex-1"><Visor key={ver} ruta={ver} editable alto="h-[75vh]" /></div>
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">Todavía no hay barridos. Pídele uno a Claude o escríbelo a mano.</p>
+      )}
     </div>
   )
 }
