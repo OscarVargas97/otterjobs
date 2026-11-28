@@ -35,5 +35,6 @@ otterjobs es la app de escritorio (Electron + React) para la búsqueda de trabaj
 ## Configuración
 
 - `~/.otterjobs/config.json`: `{ "datos": "<carpeta de datos>" }`. Se fija con `pnpm otterjobs datos <carpeta>` o desde la app.
-- `~/.otterjobs/.env`: `GMAIL_USER` y `GMAIL_APP_PASSWORD` (contraseña de aplicación de Google). Lo escribe la Bandeja después de probar la conexión.
+- `~/.otterjobs/gmail.json`: las cuentas de Gmail (`[{ user, pass }]`, contraseñas de aplicación). Lo escribe la Bandeja después de probar cada conexión.
+- `~/.otterjobs/.env`: `GMAIL_USER` y `GMAIL_APP_PASSWORD`, una cuenta más si se configura a mano.
 - `OTTERJOBS_DATOS` y `OTTERJOBS_HOME` los reemplazan (útil en pruebas).

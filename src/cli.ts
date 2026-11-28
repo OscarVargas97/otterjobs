@@ -7,7 +7,7 @@
 //   pnpm otterjobs pdf <archivo.html> [salida.pdf]   (CV a PDF con Edge o Chrome)
 //   pnpm otterjobs nuevo [carpeta] | datos <carpeta> | migrar
 import { join, resolve } from 'node:path'
-import { carpetaDatos, credencialesGmail, guardarCarpetaDatos, RUTA_ENV, rutas } from './core/config.ts'
+import { carpetaDatos, cuentasGmail, guardarCarpetaDatos, RUTA_GMAIL, rutas } from './core/config.ts'
 import { usar } from './core/db.ts'
 import { escanear, leerInbox, marcarRevisado } from './core/gmail.ts'
 import { migrar } from './core/migrar.ts'
@@ -65,11 +65,12 @@ async function main(a: string[]) {
     return console.log(e.siguiente ? `\nSigue: /perfil ${e.siguiente}` : '\nPerfil completo. Mantenlo con /revisar, /buscar y /semana.')
   }
   if (cmd === 'gmail' && !resto.includes('--revisado') && !resto.includes('--pendientes')) {
-    const cred = credencialesGmail()
-    if (!cred) throw new Error(`Faltan GMAIL_USER y GMAIL_APP_PASSWORD en ${RUTA_ENV}`)
+    const cuentas = cuentasGmail()
+    if (!cuentas.length) throw new Error(`Sin cuentas de Gmail: conéctalas desde la Bandeja de la app (quedan en ${RUTA_GMAIL})`)
     const filas = usar(r.db, leer) // la base no queda abierta durante el escaneo
-    const { nuevos, pendientes } = await escanear(cred, filas, r.inbox, Number(opcion(resto, '--dias') ?? 7))
-    return console.log(`${nuevos} correos nuevos de postulaciones. Pendientes: ${pendientes}.`)
+    const { nuevos, pendientes, errores } = await escanear(cuentas, filas, r.inbox, Number(opcion(resto, '--dias') ?? 7))
+    for (const e of errores) console.error(`No se pudo leer ${e}`)
+    return console.log(`${nuevos} correos nuevos de postulaciones en ${cuentas.length - errores.length} de ${cuentas.length} cuenta(s). Pendientes: ${pendientes}.`)
   }
 
   usar(r.db, (db) => {
@@ -119,7 +120,7 @@ async function main(a: string[]) {
       case 'gmail': {
         if (resto.includes('--revisado')) return marcarRevisado(r.inbox, 'todos', isoHoy()), console.log('Todo marcado como revisado.')
         for (const c of leerInbox(r.inbox).filter((c) => !c.revisado))
-          console.log(`[${c.fecha}] ${c.empresa || '¿?'} (#${c.orden || '-'}) | ${c.de}\n  ${c.asunto}\n  ${c.extracto.slice(0, 300)}\n`)
+          console.log(`[${c.fecha}] ${c.empresa || '¿?'} (#${c.orden || '-'}) | ${c.de}${c.cuenta ? ` → ${c.cuenta}` : ''}\n  ${c.asunto}\n  ${c.extracto.slice(0, 300)}\n`)
         return
       }
       default:

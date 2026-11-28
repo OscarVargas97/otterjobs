@@ -12,12 +12,11 @@ type Estado = {
   tareas?: Tarea[]
   pendientes?: Pendiente[]
   inbox?: (Correo & { enlace: string })[]
-  gmail?: string | null
-  rutaEnv?: string
+  gmail?: string[]
   version?: string
 }
 type Api = {
-  [k in 'cargar' | 'elegirDatos' | 'actualizar' | 'agregar' | 'marcarPendiente' | 'nuevoPendiente' | 'escanear' | 'configurarGmail' | 'revisado' | 'claude']: (...a: unknown[]) => Promise<Estado>
+  [k in 'cargar' | 'elegirDatos' | 'actualizar' | 'agregar' | 'marcarPendiente' | 'nuevoPendiente' | 'escanear' | 'configurarGmail' | 'quitarGmail' | 'revisado' | 'claude']: (...a: unknown[]) => Promise<Estado>
 } & { historial: (orden: string) => Promise<Evento[]>; abrir: (url: string) => void; alCambiar: (cb: (e: Estado) => void) => () => void }
 const api = (window as unknown as { api: Api }).api
 
@@ -252,10 +251,12 @@ function NuevaOferta({ cerrar, hacer }: { cerrar: () => void; hacer: Hacer }) {
 
 function Bandeja({ s, abrir, hacer, ocupado }: { s: Estado; abrir: (o: string) => void; hacer: Hacer; ocupado: boolean }) {
   const [todos, setTodos] = useState(false)
-  const [configurar, setConfigurar] = useState(false)
+  const [agregar, setAgregar] = useState(false)
+  const [quitar, setQuitar] = useState<string>()
+  const cuentas = s.gmail ?? []
   const correos = (s.inbox ?? []).filter((c) => todos || !c.revisado)
   const pendientes = (s.inbox ?? []).filter((c) => !c.revisado).length
-  if (!s.gmail || configurar) return <ConectarGmail s={s} hacer={hacer} ocupado={ocupado} listo={() => setConfigurar(false)} />
+  if (!cuentas.length || agregar) return <ConectarGmail cuentas={cuentas} hacer={hacer} ocupado={ocupado} listo={() => setAgregar(false)} />
   return (
     <div className="max-w-4xl space-y-3">
       <div className="flex items-center gap-2">
@@ -270,11 +271,25 @@ function Bandeja({ s, abrir, hacer, ocupado }: { s: Estado; abrir: (o: string) =
         <Boton variante={pendientes ? 'default' : 'outline'} disabled={!pendientes} onClick={() => hacer(() => api.claude('correo'))}><Bot /> Revisar {pendientes || ''} con Claude</Boton>
         <Boton variante="ghost" disabled={!pendientes} onClick={() => hacer(() => api.revisado('todos'))}>Marcar todo revisado</Boton>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Conectado como {s.gmail} · solo lectura ·{' '}
-        <button className="underline hover:text-foreground" onClick={() => setConfigurar(true)}>cambiar</button>
-        {pendientes > 0 && <> · Siguiente paso: «Revisar con Claude» clasifica estos correos y actualiza tus postulaciones.</>}
-      </p>
+      <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+        <span>Solo lectura en:</span>
+        {cuentas.map((u) =>
+          quitar === u ? (
+            <span key={u} className="flex items-center gap-1 rounded bg-destructive/15 px-1.5 py-0.5 text-foreground">
+              ¿Dejar de leer {u}?
+              <button className="underline" onClick={() => (setQuitar(undefined), hacer(() => api.quitarGmail(u)))}>Sí</button>
+              <button className="underline" onClick={() => setQuitar(undefined)}>No</button>
+            </span>
+          ) : (
+            <span key={u} className="flex items-center gap-1 rounded bg-muted px-1.5 py-0.5">
+              {u}
+              <button title={`Quitar ${u}`} className="hover:text-foreground" onClick={() => setQuitar(u)}><X className="size-3" /></button>
+            </span>
+          )
+        )}
+        <button className="flex items-center gap-0.5 underline hover:text-foreground" onClick={() => setAgregar(true)}><Plus className="size-3" /> Agregar otra cuenta</button>
+      </div>
+      {pendientes > 0 && <p className="text-xs text-muted-foreground">Siguiente paso: «Revisar con Claude» clasifica estos correos y actualiza tus postulaciones.</p>}
       {correos.length === 0 && <p className="text-sm text-muted-foreground">Nada pendiente. «Buscar correos nuevos» revisa los últimos 7 días.</p>}
       {correos.map((c) => (
         <div key={c.id} className={`rounded-lg border border-border bg-card p-3 ${c.revisado ? 'opacity-60' : ''}`}>
@@ -286,6 +301,7 @@ function Bandeja({ s, abrir, hacer, ocupado }: { s: Estado; abrir: (o: string) =
               <span className="rounded bg-muted px-1.5">sin empresa</span>
             )}
             <span className="truncate">{c.de}</span>
+            {cuentas.length > 1 && c.cuenta && <span className="ml-auto shrink-0">→ {c.cuenta}</span>}
           </div>
           <div className="mt-1 text-sm font-medium">{c.asunto}</div>
           <div className="mt-1 line-clamp-3 text-xs text-muted-foreground">{c.extracto}</div>
@@ -371,16 +387,16 @@ const Paso = ({ n, t, children }: { n: number; t: string; children: ReactNode })
   </li>
 )
 
-function ConectarGmail({ s, hacer, ocupado, listo }: { s: Estado; hacer: Hacer; ocupado: boolean; listo: () => void }) {
-  const [user, setUser] = useState(s.gmail ?? '')
+function ConectarGmail({ cuentas, hacer, ocupado, listo }: { cuentas: string[]; hacer: Hacer; ocupado: boolean; listo: () => void }) {
+  const [user, setUser] = useState('')
   const [pass, setPass] = useState('')
   const limpia = pass.replace(/\s/g, '')
   return (
     <div className="max-w-2xl space-y-4">
       <div>
-        <Titulo>Conectar Gmail</Titulo>
+        <Titulo>{cuentas.length ? 'Agregar otra cuenta de Gmail' : 'Conectar Gmail'}</Titulo>
         <p className="mt-1 text-sm text-muted-foreground">
-          otterjobs lee (solo lee) los correos de reclutadores y de las empresas a las que postulaste. Nunca envía, borra ni marca como leído. La contraseña queda solo en este computador.
+          otterjobs lee (solo lee) los correos de reclutadores y de las empresas a las que postulaste. Nunca envía, borra ni marca como leído. La contraseña queda solo en este computador. Puedes conectar varias cuentas, una por vez: haz los pasos 1 y 2 con la sesión de Google de la cuenta que vas a agregar.
         </p>
       </div>
       <ol className="space-y-3">
@@ -405,7 +421,7 @@ function ConectarGmail({ s, hacer, ocupado, listo }: { s: Estado; hacer: Hacer; 
               <Boton type="submit" disabled={ocupado || !user.includes('@') || limpia.length !== 16}>
                 <RefreshCw className={ocupado ? 'animate-spin' : ''} /> {ocupado ? 'Conectando y buscando correos…' : 'Conectar y buscar correos del último mes'}
               </Boton>
-              {s.gmail && <Boton type="button" variante="ghost" onClick={listo}>Cancelar</Boton>}
+              {cuentas.length > 0 && <Boton type="button" variante="ghost" onClick={listo}>Cancelar</Boton>}
             </div>
           </form>
         </Paso>

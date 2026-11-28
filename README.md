@@ -95,9 +95,9 @@ La CLI hace lo mismo que la app: `pnpm otterjobs ver`, `stats`, `tareas`, `histo
 
 La app lee (solo lee) los correos de postulaciones por IMAP. No usa IA para leerlos: un script guarda los que nombran una empresa de tu tracker o hablan de reclutamiento, y «Revisar con Claude» (`/correo`) los clasifica y actualiza tus postulaciones.
 
-En la app, abre **Bandeja**: te guía en tres pasos, con los enlaces de Google (verificación en dos pasos y [contraseña de aplicación](https://myaccount.google.com/apppasswords)). Al pegar la contraseña, prueba la conexión, la guarda en `~/.otterjobs/.env` (fuera de los repos) y busca los correos del último mes.
+En la app, abre **Bandeja**: te guía en tres pasos, con los enlaces de Google (verificación en dos pasos y [contraseña de aplicación](https://myaccount.google.com/apppasswords)). Al pegar la contraseña, prueba la conexión, la guarda en `~/.otterjobs/gmail.json` (fuera de los repos) y busca los correos del último mes. Si los correos de postulaciones te llegan a más de una cuenta, conéctalas todas («Agregar otra cuenta»): «Buscar correos nuevos» las lee todas y cada correo se abre en la cuenta donde llegó.
 
-Sin la app: crea `~/.otterjobs/.env` con `GMAIL_USER=…` y `GMAIL_APP_PASSWORD=…` y corre `pnpm otterjobs gmail --dias 7`. Para revocar el acceso, borra la contraseña de aplicación en Google.
+Sin la app: para una cuenta, crea `~/.otterjobs/.env` con `GMAIL_USER=…` y `GMAIL_APP_PASSWORD=…` y corre `pnpm otterjobs gmail --dias 7`. Para revocar el acceso, borra la contraseña de aplicación en Google.
 
 ## Desarrollo
 

@@ -3,7 +3,7 @@ import { watch, type FSWatcher } from 'node:fs'
 import { join } from 'node:path'
 import { VelopackApp } from 'velopack'
 import { argsClaude, armarPedido, PEDIDOS, type Pedido } from '../core/claude.ts'
-import { carpetaDatos, credencialesGmail, guardarCarpetaDatos, guardarCredencialesGmail, RUTA_ENV, rutas } from '../core/config.ts'
+import { carpetaDatos, cuentasGmail, guardarCarpetaDatos, guardarCuentaGmail, quitarCuentaGmail, rutas } from '../core/config.ts'
 import { enlaceGmail, escanear, leerInbox, marcarRevisado, probarGmail } from '../core/gmail.ts'
 import { usar, type Db } from '../core/db.ts'
 import { agregarPendiente, leerPendientes, marcarPendiente } from '../core/pendientes.ts'
@@ -26,9 +26,8 @@ function estado() {
     filas,
     tareas: tareas(filas),
     pendientes,
-    inbox: leerInbox(r.inbox).map((c) => ({ ...c, enlace: enlaceGmail(c.id) })),
-    gmail: credencialesGmail()?.user ?? null,
-    rutaEnv: RUTA_ENV,
+    inbox: leerInbox(r.inbox).map((c) => ({ ...c, enlace: enlaceGmail(c.id, c.cuenta) })),
+    gmail: cuentasGmail().map((c) => c.user),
     version: app.getVersion()
   }
 }
@@ -89,19 +88,20 @@ manejar('marcarPendiente', (id, hecha) => {
 })
 manejar('nuevoPendiente', (txt) => conDb((db) => agregarPendiente(db, texto(txt, 500))))
 manejar('escanear', async (dias) => {
-  const cred = credencialesGmail()
-  if (!cred) throw new Error(`Faltan GMAIL_USER y GMAIL_APP_PASSWORD en ${RUTA_ENV}`)
   const r = datosOk()
-  await escanear(cred, usar(r.db, leer), r.inbox, Number.isInteger(dias) ? (dias as number) : 7)
+  const { errores } = await escanear(cuentasGmail(), usar(r.db, leer), r.inbox, Number.isInteger(dias) ? (dias as number) : 7)
+  if (errores.length) throw new Error(`No se pudieron leer: ${errores.join(' · ')}`)
 })
 manejar('configurarGmail', async (user, pass) => {
   const cred = { user: texto(user, 200).trim(), pass: texto(pass, 100).replace(/\s/g, '') }
   if (!/^\S+@\S+$/.test(cred.user) || cred.pass.length !== 16) throw new Error('Revisa el correo y que la contraseña de aplicación tenga 16 letras')
   await probarGmail(cred)
-  guardarCredencialesGmail(cred)
+  guardarCuentaGmail(cred)
   const r = datosOk()
-  await escanear(cred, usar(r.db, leer), r.inbox, 30) // primera vez: el último mes
+  const { errores } = await escanear([cred], usar(r.db, leer), r.inbox, 30) // cuenta nueva: el último mes
+  if (errores.length) throw new Error(errores[0])
 })
+manejar('quitarGmail', (user) => quitarCuentaGmail(texto(user, 200)))
 manejar('revisado', (ids) => {
   if (ids !== 'todos' && !(Array.isArray(ids) && ids.every((i) => typeof i === 'string'))) throw new Error('dato inválido')
   marcarRevisado(datosOk().inbox, ids as string[] | 'todos', isoHoy())

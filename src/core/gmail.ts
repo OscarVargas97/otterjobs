@@ -7,7 +7,7 @@ import { ImapFlow } from 'imapflow'
 import { simpleParser } from 'mailparser'
 import type { Fila } from './tracker.ts'
 
-export type Correo = { id: string; fecha: string; de: string; asunto: string; empresa: string; orden: string; extracto: string; revisado: string }
+export type Correo = { id: string; fecha: string; de: string; asunto: string; empresa: string; orden: string; extracto: string; revisado: string; cuenta?: string }
 
 const CLAVES = ['postulacion', 'entrevista', 'oferta laboral', 'carta oferta', 'proceso de seleccion', 'candidat', 'vacante', 'reclutamiento', 'talent', 'getonbrd', 'get on board', 'your application', 'tu postulacion', 'seleccion']
 const GENERICAS = new Set(['afp', 'banco', 'caja', 'grupo', 'the', 'tech', 'chile', 'group', 'agency'])
@@ -63,9 +63,23 @@ export async function probarGmail(cred: Credenciales): Promise<void> {
   await cliente.logout()
 }
 
-export async function escanear(cred: Credenciales, filas: Fila[], rutaInbox: string, dias = 7): Promise<{ nuevos: number; pendientes: number }> {
+/** Escanea cada cuenta; si una falla, sigue con las demás y devuelve su error. */
+export async function escanear(cuentas: Credenciales[], filas: Fila[], rutaInbox: string, dias = 7) {
   const correos = leerInbox(rutaInbox)
-  const vistos = new Set(correos.map((c) => c.id))
+  const vistos = new Set(correos.map((c) => c.id)) // el mismo correo en dos cuentas queda una vez
+  let nuevos = 0
+  const errores: string[] = []
+  for (const cred of cuentas)
+    try {
+      nuevos += await escanearCuenta(cred, filas, correos, vistos, dias)
+    } catch (e) {
+      errores.push(`${cred.user}: ${(e as Error).message}`)
+    }
+  guardarInbox(rutaInbox, correos)
+  return { nuevos, pendientes: correos.filter((c) => !c.revisado).length, errores }
+}
+
+async function escanearCuenta(cred: Credenciales, filas: Fila[], correos: Correo[], vistos: Set<string>, dias: number): Promise<number> {
   const cliente = new ImapFlow({ host: 'imap.gmail.com', port: 993, secure: true, auth: cred, logger: false })
   let nuevos = 0
   await cliente.connect()
@@ -85,7 +99,7 @@ export async function escanear(cred: Credenciales, filas: Fila[], rutaInbox: str
         const cuerpo = (p.text || (typeof p.html === 'string' ? p.html.replace(/<[^>]+>/g, ' ') : '')).replace(/\s+/g, ' ').trim().slice(0, 3000)
         const fila = empresaDe(`${de} ${asunto}`, filas) ?? empresaDe(cuerpo, filas)
         if (!fila && !esReclutamiento(`${de} ${asunto} ${cuerpo}`)) continue
-        correos.push({ id, fecha: (p.date ?? new Date()).toISOString().slice(0, 16).replace('T', ' '), de, asunto, empresa: fila?.empresa ?? '', orden: fila?.orden ?? '', extracto: cuerpo.slice(0, 600), revisado: '' })
+        correos.push({ id, fecha: (p.date ?? new Date()).toISOString().slice(0, 16).replace('T', ' '), de, asunto, empresa: fila?.empresa ?? '', orden: fila?.orden ?? '', extracto: cuerpo.slice(0, 600), revisado: '', cuenta: cred.user })
         vistos.add(id)
         nuevos++
       }
@@ -95,9 +109,9 @@ export async function escanear(cred: Credenciales, filas: Fila[], rutaInbox: str
   } finally {
     await cliente.logout()
   }
-  guardarInbox(rutaInbox, correos)
-  return { nuevos, pendientes: correos.filter((c) => !c.revisado).length }
+  return nuevos
 }
 
-/** Enlace que abre el correo en Gmail por su Message-ID. */
-export const enlaceGmail = (id: string) => `https://mail.google.com/mail/u/0/#search/${encodeURIComponent(`rfc822msgid:${id.replace(/^<|>$/g, '')}`)}`
+/** Enlace al correo por su Message-ID, en la cuenta donde llegó (authuser) aunque no sea la primera del navegador. */
+export const enlaceGmail = (id: string, cuenta?: string) =>
+  `https://mail.google.com/mail/${cuenta ? `?authuser=${encodeURIComponent(cuenta)}` : 'u/0/'}#search/${encodeURIComponent(`rfc822msgid:${id.replace(/^<|>$/g, '')}`)}`

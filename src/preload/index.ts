@@ -13,6 +13,7 @@ const api = {
   historial: llamar('historial'),
   escanear: llamar('escanear'),
   configurarGmail: llamar('configurarGmail'),
+  quitarGmail: llamar('quitarGmail'),
   revisado: llamar('revisado'),
   claude: llamar('claude'),
   abrir: (url: string) => ipcRenderer.send('abrir', url),
