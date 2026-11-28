@@ -1,27 +1,29 @@
 // «Preguntarle a Claude»: abre Claude Code interactivo (suscripción, no API ni `claude -p`) en la carpeta de datos,
-// donde AGENTS.md ya le da las reglas. La app solo arma el pedido; el criterio y la redacción quedan en Claude.
-import { spawn } from 'node:child_process'
+// en una terminal dentro de la app (src/main/terminal.ts),
+// con el plugin metodo/ (reglas y comandos). La app solo arma el pedido; el criterio y la redacción quedan en Claude.
+import { join } from 'node:path'
 import type { Fila } from './tracker.ts'
 
+// Cada pedido es un comando de metodo/commands: el método vive en el plugin, no en el código ni en los datos.
 export const PEDIDOS = {
-  preparar: 'Prepara la entrevista',
-  mensaje: 'Redacta el mensaje que corresponde según el próximo paso y déjalo en el portapapeles (no lo envíes)',
-  evaluar: 'Evalúa esta oferta contra perfil.md: calce, brechas, sueldo y si vale la pena postular',
-  postular: 'Prepara la postulación: variante de CV, ficha y respuestas',
-  correo: '/correo'
+  preparar: '/otterjobs:entrevista',
+  mensaje: '/otterjobs:mensaje',
+  evaluar: '/otterjobs:evaluar',
+  postular: '/otterjobs:postular',
+  correo: '/otterjobs:correo',
+  perfil: '/otterjobs:perfil',
+  buscar: '/otterjobs:buscar',
+  revisar: '/otterjobs:revisar',
+  semana: '/otterjobs:semana'
 } as const
 export type Pedido = keyof typeof PEDIDOS
 
-/** El texto que recibe Claude. Sin `;` porque Windows Terminal lo usa para separar comandos. */
+/** El texto que recibe Claude: un solo argumento, sin comillas ni `%` porque en Windows pasa por cmd.exe. */
 export function armarPedido(pedido: Pedido, fila?: Pick<Fila, 'orden' | 'empresa' | 'cargo'>): string {
-  if (pedido === 'correo' || !fila) return PEDIDOS[pedido]
-  return `${PEDIDOS[pedido]} para la postulación #${fila.orden} del tracker: ${fila.empresa}, ${fila.cargo}.`.replace(/;/g, ',').replace(/[\r\n"]+/g, ' ')
+  if (!fila) return PEDIDOS[pedido]
+  return `${PEDIDOS[pedido]} #${fila.orden} ${fila.empresa}, ${fila.cargo}`.replace(/;/g, ',').replace(/[\r\n"%]+/g, ' ')
 }
 
-export function abrirClaude(cwd: string, texto: string): void {
-  const [cmd, args] =
-    process.platform === 'win32'
-      ? ['wt.exe', ['-d', cwd, '--title', 'otterjobs · Claude', 'claude', texto]]
-      : ['x-terminal-emulator', ['-e', 'claude', texto]]
-  spawn(cmd, args, { cwd, detached: true, stdio: 'ignore' }).unref()
-}
+/** Argumentos de `claude`. `metodo`: la carpeta del plugin (en la app empaquetada, fuera del asar para que Claude Code la lea).
+ *  Su settings.json deja fuera el CLAUDE.md de desarrollo de otterjobs cuando los datos están en otterjobs/datos. */
+export const argsClaude = (metodo: string, texto: string) => ['--plugin-dir', metodo, '--settings', join(metodo, 'settings.json'), texto]
