@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ArrowLeft, Bot, CalendarClock, Check, ChevronRight, Compass, Database, ExternalLink, FileText, FolderOpen, Inbox, KanbanSquare, Mail, Megaphone, Minus, Pencil, Plus, RefreshCw, Telescope, Trash2, UserRound, X } from 'lucide-react'
+import { ArrowLeft, Bot, CalendarClock, Check, ChevronRight, Compass, Database, ExternalLink, FileText, FolderOpen, Inbox, KanbanSquare, Mail, Megaphone, Minus, PanelLeftClose, PanelLeftOpen, Pencil, Plus, RefreshCw, Telescope, Trash2, UserRound, X } from 'lucide-react'
 import type { Correo } from '../../core/gmail.ts'
 import type { Pendiente } from '../../core/pendientes.ts'
 import type { Evento, Fila, Tarea } from '../../core/tracker.ts'
@@ -68,6 +68,8 @@ export function App() {
   const [ocupado, setOcupado] = useState(false)
   const [sesiones, setSesiones] = useState(0)
   const ir = (v: typeof vista) => (setVista(v), setAbierta(null))
+  const [plegado, setPlegado] = useState(() => localStorage.getItem('menuPlegado') === '1')
+  const plegar = (x: boolean) => (setPlegado(x), localStorage.setItem('menuPlegado', x ? '1' : ''))
 
   useEffect(() => {
     // Mientras falte lo indispensable, la app abre en la Guía.
@@ -106,21 +108,43 @@ export function App() {
 
   return (
     <div className="flex h-full">
-      <nav className="flex w-52 shrink-0 flex-col gap-1 border-r border-border bg-sidebar p-3">
-        <div className="mb-3 px-2 text-lg font-semibold">otterjobs</div>
-        <Nav activo={vista === 'guia' && !fila} onClick={() => ir('guia')} icono={<Compass />} texto="Guía" n={(s.perfil && guia(s).filter((x) => !x.ok).length) || undefined} />
-        <Nav activo={vista === 'hoy' && !fila} onClick={() => ir('hoy')} icono={<CalendarClock />} texto="Hoy" n={vencidas || undefined} alerta />
-        <Nav activo={vista === 'tablero' && !fila} onClick={() => ir('tablero')} icono={<KanbanSquare />} texto="Tablero" n={filas.length} />
-        <Nav activo={vista === 'bandeja' && !fila} onClick={() => ir('bandeja')} icono={<Inbox />} texto="Bandeja" n={pendientes || undefined} alerta />
-        <Nav activo={vista === 'fuentes' && !fila} onClick={() => ir('fuentes')} icono={<Database />} texto="Fuentes" n={s.perfil?.estado.fuentes || undefined} />
-        <Nav activo={vista === 'perfil' && !fila} onClick={() => ir('perfil')} icono={<UserRound />} texto="Perfil" n={s.perfil?.estado.etapas.filter((e) => !e.listo).length || undefined} />
-        <Nav activo={vista === 'cv' && !fila} onClick={() => ir('cv')} icono={<FileText />} texto="CV" n={s.perfil?.cvs.length || undefined} />
-        <Nav activo={vista === 'mercado' && !fila} onClick={() => ir('mercado')} icono={<Telescope />} texto="Mercado" n={s.mercado?.length || undefined} />
-        <Nav activo={vista === 'linkedin' && !fila} onClick={() => ir('linkedin')} icono={<Megaphone />} texto="LinkedIn" n={s.linkedin?.posts.filter((p) => p.estado === 'aprobado').length || undefined} />
-        <div className="mt-auto space-y-1 px-2 text-2xs text-muted-foreground">
-          <div className="truncate" title={s.datos}>{s.datos}</div>
-          <div>v{s.version}</div>
+      <nav className={`flex shrink-0 flex-col gap-1 overflow-y-auto border-r border-border bg-sidebar p-3 ${plegado ? 'w-14' : 'w-52'}`}>
+        <div className="mb-2 flex items-center gap-2 px-2">
+          {!plegado && <span className="flex-1 text-lg font-semibold">otterjobs</span>}
+          <button title={plegado ? 'Desplegar menú' : 'Plegar menú'} className="text-muted-foreground hover:text-foreground [&_svg]:size-4" onClick={() => plegar(!plegado)}>{plegado ? <PanelLeftOpen /> : <PanelLeftClose />}</button>
         </div>
+        {[
+          ['Día a día', [
+            ['hoy', <CalendarClock />, 'Hoy', vencidas || undefined, true],
+            ['tablero', <KanbanSquare />, 'Tablero', filas.length],
+            ['bandeja', <Inbox />, 'Bandeja', pendientes || undefined, true]
+          ]],
+          ['Búsqueda', [
+            ['mercado', <Telescope />, 'Mercado', s.mercado?.length || undefined],
+            ['linkedin', <Megaphone />, 'LinkedIn', s.linkedin?.posts.filter((p) => p.estado === 'aprobado').length || undefined]
+          ]],
+          ['Tu perfil', [
+            ['perfil', <UserRound />, 'Perfil', s.perfil?.estado.etapas.filter((e) => !e.listo).length || undefined],
+            ['cv', <FileText />, 'CV', s.perfil?.cvs.length || undefined]
+          ]],
+          ['Configuración', [
+            ['guia', <Compass />, 'Guía', (s.perfil && guia(s).filter((x) => !x.ok).length) || undefined],
+            ['fuentes', <Database />, 'Fuentes', s.perfil?.estado.fuentes || undefined]
+          ]]
+        ].map(([grupo, items]) => (
+          <div key={grupo as string} className="space-y-1">
+            {plegado ? <div className="mx-2 mt-2 border-t border-border" /> : <div className="mt-3 px-2 text-2xs font-semibold uppercase text-muted-foreground">{grupo as string}</div>}
+            {(items as [Vista, ReactNode, string, number | undefined, boolean?][]).map(([v, icono, texto, n, alerta]) => (
+              <Nav key={v} activo={vista === v && !fila} onClick={() => ir(v)} icono={icono} texto={texto} n={n} alerta={alerta} plegado={plegado} />
+            ))}
+          </div>
+        ))}
+        {!plegado && (
+          <div className="mt-auto space-y-1 px-2 pt-3 text-2xs text-muted-foreground">
+            <div className="truncate" title={s.datos}>{s.datos}</div>
+            <div>v{s.version}</div>
+          </div>
+        )}
       </nav>
 
       <main className="min-w-0 flex-1 overflow-auto p-5 pb-20">
@@ -130,6 +154,7 @@ export function App() {
             <button onClick={() => setError('')}><X className="size-4" /></button>
           </div>
         )}
+        <div className={vista === 'tablero' && !fila ? '' : 'mx-auto max-w-6xl'}>
         {fila ? (
           <Detalle key={fila.empresa + fila.cargo} fila={fila} cerrar={() => setAbierta(null)} hacer={hacer} />
         ) : (
@@ -145,6 +170,7 @@ export function App() {
             {vista === 'linkedin' && s.linkedin && <Linkedin li={s.linkedin} hacer={hacer} ocupado={ocupado} />}
           </>
         )}
+        </div>
       </main>
       {/* Claude flota abajo a la derecha, como un chat: se abre solo cuando un botón inicia una sesión */}
       <div className={`fixed bottom-20 right-5 z-40 flex h-[min(80vh,760px)] w-[min(1000px,calc(100vw-15rem))] flex-col overflow-hidden rounded-xl border border-border bg-[#141414] shadow-2xl ${chat ? '' : 'hidden'}`}>
@@ -314,7 +340,7 @@ function Bandeja({ s, abrir, hacer, ocupado }: { s: Estado; abrir: (o: string) =
   const pendientes = (s.inbox ?? []).filter((c) => !c.revisado).length
   if (!cuentas.length || agregar) return <ConectarGmail cuentas={cuentas} hacer={hacer} ocupado={ocupado} listo={() => setAgregar(false)} />
   return (
-    <div className="max-w-4xl space-y-3">
+    <div className="mx-auto max-w-4xl space-y-3">
       <div className="flex items-center gap-2">
         <Titulo>Bandeja de Gmail</Titulo>
         <div className="flex-1" />
@@ -455,7 +481,7 @@ function ConectarGmail({ cuentas, hacer, ocupado, listo }: { cuentas: string[]; 
   const [pass, setPass] = useState('')
   const limpia = pass.replace(/\s/g, '')
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="mx-auto max-w-2xl space-y-4">
       <div>
         <Titulo>{cuentas.length ? 'Agregar otra cuenta de Gmail' : 'Conectar Gmail'}</Titulo>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -501,12 +527,12 @@ const Campo = ({ t, children }: { t: string; children: ReactNode }) => (
   </label>
 )
 
-function Nav({ activo, onClick, icono, texto, n, alerta }: { activo: boolean; onClick: () => void; icono: ReactNode; texto: string; n?: number; alerta?: boolean }) {
+function Nav({ activo, onClick, icono, texto, n, alerta, plegado }: { activo: boolean; onClick: () => void; icono: ReactNode; texto: string; n?: number; alerta?: boolean; plegado?: boolean }) {
   return (
-    <button onClick={onClick} className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm [&_svg]:size-4 ${activo ? 'bg-sidebar-accent text-foreground' : 'text-muted-foreground hover:bg-sidebar-accent/60'}`}>
+    <button onClick={onClick} title={plegado ? texto : undefined} aria-label={texto} className={`relative flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm [&_svg]:size-4 ${activo ? 'bg-sidebar-accent text-foreground' : 'text-muted-foreground hover:bg-sidebar-accent/60'}`}>
       {icono}
-      <span className="flex-1 text-left">{texto}</span>
-      {n !== undefined && <span className={`rounded-full px-1.5 text-2xs ${alerta ? 'bg-destructive text-white' : 'bg-muted'}`}>{n}</span>}
+      {!plegado && <span className="flex-1 text-left">{texto}</span>}
+      {n !== undefined && (plegado ? alerta && <span className="absolute right-1 top-1 size-2 rounded-full bg-destructive" /> : <span className={`rounded-full px-1.5 text-2xs ${alerta ? 'bg-destructive text-white' : 'bg-muted'}`}>{n}</span>)}
     </button>
   )
 }
@@ -523,6 +549,7 @@ function Boton({ variante = 'default', tam = 'sm', className = '', ...p }: React
 
 type Fila_ = Record<string, string>
 const NOMBRE: Record<Etapa, string> = { hechos: 'Hechos', preferencias: 'Preferencias', mercado: 'Mercado', marca: 'Marca', alertas: 'Alertas', cv: 'CV', perfiles: 'Perfiles', revision: 'Revisión' }
+const mes = (x = '') => (/^\d{4}-\d{2}$/.test(x) ? `${'ene feb mar abr may jun jul ago sep oct nov dic'.split(' ')[Number(x.slice(5)) - 1]} ${x.slice(0, 4)}` : x)
 const vacia = (c: CampoForm) => Object.fromEntries((c.campos ?? []).map((x) => [x.k, ''])) as Fila_
 
 /** El orden para armar el perfil: primero el material, después lo que Claude saca de él, y al final las etapas que dependen de las anteriores. */
@@ -537,6 +564,7 @@ function Pasos({ p, etapa, setEtapa, hacer, ir }: { p: NonNullable<Estado['perfi
     { t: 'Revisión', d: listo('revision') ? 'Evaluado' : 'Evalúa el CV', ok: listo('revision'), ir: () => setEtapa('revision') }
   ]
   const sigue = pasos.findIndex((x) => !x.ok)
+  if (sigue < 0) return null
   const actual = etapa === 'revision' ? 4 : etapa === 'cv' || etapa === 'perfiles' ? 3 : 2
   return (
     <ol className="mb-5 flex gap-2">
@@ -564,11 +592,16 @@ function Perfil({ s, hacer, ocupado, ir }: { s: Estado; hacer: Hacer; ocupado: b
   const [ver, setVer] = useState(false)
   const vacio = !Object.values(p.valores[etapa] ?? {}).some((v) => (Array.isArray(v) ? v.length : String(v).trim()))
   const conClaude = () => hacer(() => api.claude('perfil', etapa))
+  // Cada etapa sale de otras (ETAPAS.usa): se muestra de dónde sale y adónde va, para no tener que conocer el sistema.
+  const hecho = (u: Etapa) => p.estado.etapas.find((x) => x.id === u)!.listo
+  const nombre = (u: Etapa) => NOMBRE[u]
+  const irA = (u: Etapa) => (setEtapa(u), setVer(false))
+  const faltan = e.usa.filter((u) => !hecho(u))
   return (
-    <div>
+    <div className="mx-auto max-w-5xl">
     <Pasos p={p} etapa={etapa} setEtapa={(x) => (setEtapa(x), setVer(false))} hacer={hacer} ir={ir} />
     <div className="flex gap-5">
-      <div className="w-60 shrink-0 space-y-3">
+      <div className="w-48 shrink-0 space-y-3">
         <Titulo>Tu perfil</Titulo>
         <p className="text-xs text-muted-foreground">
           {p.estado.fuentes} archivos en fuentes/ ·{' '}
@@ -576,11 +609,11 @@ function Perfil({ s, hacer, ocupado, ir }: { s: Estado; hacer: Hacer; ocupado: b
         </p>
         <div className="space-y-0.5">
           {p.estado.etapas.map((x) => (
-            <button key={x.id} onClick={() => setEtapa(x.id)} className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm ${x.id === etapa ? 'bg-accent' : 'hover:bg-accent/60'}`}>
+            <button key={x.id} onClick={() => irA(x.id)} title={!x.listo && x.usa.some((u) => !hecho(u)) ? `Primero: ${x.usa.filter((u) => !hecho(u)).map(nombre).join(' y ')}` : undefined} className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm ${x.id === etapa ? 'bg-accent' : 'hover:bg-accent/60'} ${!x.listo && x.usa.some((u) => !hecho(u)) ? 'text-muted-foreground' : ''}`}>
               <span className={`w-4 ${x.listo ? 'text-ok' : 'text-muted-foreground'}`}>{x.listo ? <Check className="size-4" /> : '·'}</span>
               <span className="flex-1">
                 <span className="block">{NOMBRE[x.id]}</span>
-                <span className="block text-2xs text-muted-foreground">{p.manual.includes(x.id) ? 'Escrito fuera de la app' : x.que}</span>
+                {p.manual.includes(x.id) && <span className="block text-2xs text-destructive">Escrito fuera de la app</span>}
               </span>
             </button>
           ))}
@@ -597,7 +630,18 @@ function Perfil({ s, hacer, ocupado, ir }: { s: Estado; hacer: Hacer; ocupado: b
         <div className="flex items-start gap-3">
           <div className="flex-1">
             <h2 className="text-base font-semibold">{NOMBRE[etapa]}</h2>
-            <p className="text-xs text-muted-foreground">{e.archivo} · {p.formulario[etapa].intro}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{p.formulario[etapa].intro}</p>
+            {e.usa.length > 0 && (
+              <p className="mt-2 flex flex-wrap items-center gap-1.5 text-2xs text-muted-foreground">
+                <span>Sale de</span>
+                {e.usa.map((u) => (
+                  <button key={u} onClick={() => irA(u)} className={`flex items-center gap-1 rounded-full border px-2 py-0.5 hover:bg-accent ${hecho(u) ? 'border-border text-foreground' : 'border-primary/50 text-primary'}`}>
+                    {hecho(u) ? <Check className="size-3 text-ok" /> : '·'} {nombre(u)}
+                  </button>
+                ))}
+              </p>
+            )}
+            <p className="mt-1 text-2xs text-muted-foreground">Se usa en {e.sirve}.</p>
           </div>
           <div className="flex rounded-md border border-border p-0.5 text-xs">
             {(['Formulario', 'Ver archivo'] as const).map((x, i) => (
@@ -606,8 +650,14 @@ function Perfil({ s, hacer, ocupado, ir }: { s: Estado; hacer: Hacer; ocupado: b
           </div>
           {etapa !== 'revision' && <Boton tam="xs" variante="outline" onClick={conClaude}><Bot /> {vacio ? 'Llenar' : 'Refinar'} con Claude</Boton>}
         </div>
+        {faltan.length > 0 && !e.listo && (
+          <div className="flex items-center gap-3 rounded-md border border-primary/40 bg-primary/10 p-3 text-sm">
+            <p className="flex-1">{NOMBRE[etapa]} se arma con {faltan.map(nombre).join(' y ')}, y todavía no {faltan.length > 1 ? 'están listas' : 'está lista'}. Conviene completar{faltan.length > 1 ? 'las' : 'la'} primero.</p>
+            <Boton tam="sm" variante="outline" onClick={() => irA(faltan[0])}>Ir a {nombre(faltan[0])}</Boton>
+          </div>
+        )}
         {ver ? <Visor key={etapa + JSON.stringify(p.valores[etapa] ?? null) + p.estado.etapas.map((x) => x.listo).join()} ruta={e.archivo} /> : <>
-        {vacio && !manual && etapa !== 'revision' && (
+        {vacio && !manual && !faltan.length && etapa !== 'revision' && (
           <div className="flex items-center gap-3 rounded-md border border-primary/40 bg-primary/10 p-3 text-sm">
             <p className="flex-1">No hace falta llenarlo a mano: Claude lo arma con lo que hay en fuentes/ (CV antiguos, LinkedIn, certificados) y tus otras etapas, y te pregunta solo lo que falte. Después lo revisas aquí.</p>
             <Boton tam="sm" onClick={conClaude}><Bot /> Llenar con Claude</Boton>
@@ -639,7 +689,7 @@ function Formulario({ etapa, p, listo, hacer, ocupado }: { etapa: Etapa; p: NonN
   const guardar = (lista: boolean) => hacer(() => api.guardarEtapa(etapa, v, lista))
   const alertas = (v.alertas as Fila_[] | undefined) ?? []
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {etapa === 'alertas' && p.sugeridas.length > 0 && (
         <div className="space-y-1 rounded-md border border-border p-2 text-xs">
           <p className="text-muted-foreground">Señales que se ven en tus fechas:</p>
@@ -667,8 +717,10 @@ function Formulario({ etapa, p, listo, hacer, ocupado }: { etapa: Etapa; p: NonN
           </div>
         </div>
       )}
-      {f.campos.map((c) => <CampoPerfil key={c.k} c={c} v={v[c.k]} set={(x) => setV({ ...v, [c.k]: x })} />)}
-      <div className="sticky bottom-0 flex justify-end gap-2 border-t border-border bg-background py-2">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-5">
+        {f.campos.map((c) => <div key={c.k} className={c.tipo === 'area' || c.tipo === 'lista' ? 'col-span-2' : ''}><CampoPerfil c={c} v={v[c.k]} set={(x) => setV({ ...v, [c.k]: x })} /></div>)}
+      </div>
+      <div className="sticky bottom-0 z-10 flex justify-end gap-2 border-t border-border bg-background/95 py-2 backdrop-blur">
         {etapa === 'revision' ? (
           <Boton disabled={ocupado} onClick={() => guardar(true)}>Registrar evaluación</Boton>
         ) : (
@@ -682,35 +734,59 @@ function Formulario({ etapa, p, listo, hacer, ocupado }: { etapa: Etapa; p: NonN
   )
 }
 
-function CampoPerfil({ c, v, set }: { c: CampoForm; v: Valores[string] | undefined; set: (v: string | Fila_[]) => void }) {
-  if (c.tipo === 'lista') {
-    const xs = Array.isArray(v) ? v : []
-    const cambiar = (i: number, k: string, x: string) => set(xs.map((f, j) => (j === i ? { ...f, [k]: x } : f)))
-    return (
-      <div className="space-y-2">
-        <div>
-          <span className="text-sm font-medium">{c.t}</span>
-          {c.ayuda && <span className="ml-2 text-2xs text-muted-foreground">{c.ayuda}</span>}
-        </div>
+/** Una lista del perfil (empleos, historias, alertas…): cada fila se ve en una línea y se abre para editarla. */
+function ListaPerfil({ c, v, set }: { c: CampoForm; v: Valores[string] | undefined; set: (v: Fila_[]) => void }) {
+  const xs = Array.isArray(v) ? v : []
+  const [abierta, setAbierta] = useState<number | null>(null)
+  const cambiar = (i: number, k: string, x: string) => set(xs.map((f, j) => (j === i ? { ...f, [k]: x } : f)))
+  const cortos = c.campos!.filter((x) => x.tipo !== 'area')
+  const titulo = (f: Fila_) => {
+    const t = cortos.map((x) => (x.tipo === 'mes' ? '' : f[x.k]?.trim())).filter(Boolean).slice(0, 2).join(' · ') || c.campos!.map((x) => f[x.k]?.trim()).find(Boolean)?.slice(0, 90) || 'Sin completar'
+    const meses = cortos.filter((x) => x.tipo === 'mes').map((x) => f[x.k])
+    return meses[0] ? `${t} · ${mes(meses[0])} – ${meses[1] ? mes(meses[1]) : 'actual'}` : t
+  }
+  return (
+    <div className="space-y-2">
+      <div>
+        <span className="text-sm font-medium">{c.t}</span>
+        <span className="ml-2 text-2xs text-muted-foreground">{xs.length}</span>
+        {c.ayuda && <p className="text-2xs text-muted-foreground">{c.ayuda}</p>}
+      </div>
+      <div className="divide-y divide-border rounded-md border border-border">
         {xs.map((f, i) => (
-          <div key={i} className="relative grid grid-cols-2 gap-2 rounded-md border border-border p-2 pr-8">
-            <button title="Quitar" className="absolute top-2 right-2 text-muted-foreground hover:text-foreground" onClick={() => set(xs.filter((_, j) => j !== i))}><X className="size-4" /></button>
-            {c.campos!.map((sub) => (
-              <div key={sub.k} className={sub.tipo === 'area' ? 'col-span-2' : ''}>
-                <CampoPerfil c={sub} v={f[sub.k]} set={(x) => cambiar(i, sub.k, x as string)} />
+          <div key={i}>
+            <div className="flex items-center gap-2 px-3 py-2">
+              <button className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm" onClick={() => setAbierta(abierta === i ? null : i)}>
+                <ChevronRight className={`size-4 shrink-0 text-muted-foreground transition-transform ${abierta === i ? 'rotate-90' : ''}`} />
+                <span className="truncate">{titulo(f)}</span>
+              </button>
+              <button title="Quitar" className="text-muted-foreground hover:text-destructive" onClick={() => (set(xs.filter((_, j) => j !== i)), setAbierta(null))}><X className="size-4" /></button>
+            </div>
+            {abierta === i && (
+              <div className="grid grid-cols-2 gap-3 border-t border-border bg-background/40 p-3">
+                {c.campos!.map((sub) => (
+                  <div key={sub.k} className={sub.tipo === 'area' ? 'col-span-2' : ''}>
+                    <CampoPerfil c={sub} v={f[sub.k]} set={(x) => cambiar(i, sub.k, x as string)} />
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         ))}
-        <Boton tam="xs" variante="outline" onClick={() => set([...xs, vacia(c)])}><Plus /> Agregar</Boton>
+        {!xs.length && <p className="px-3 py-2 text-xs text-muted-foreground">Vacío.</p>}
       </div>
-    )
-  }
+      <Boton tam="xs" variante="outline" onClick={() => (set([...xs, vacia(c)]), setAbierta(xs.length))}><Plus /> Agregar</Boton>
+    </div>
+  )
+}
+
+function CampoPerfil({ c, v, set }: { c: CampoForm; v: Valores[string] | undefined; set: (v: string | Fila_[]) => void }) {
+  if (c.tipo === 'lista') return <ListaPerfil c={c} v={v} set={set} />
   const x = typeof v === 'string' ? v : ''
   return (
     <Campo t={c.t}>
       {c.tipo === 'area' ? (
-        <textarea rows={Math.min(12, Math.max(3, x.split('\n').length + 1))} value={x} placeholder={c.ayuda} onChange={(e) => set(e.target.value)} className="campo h-auto py-1.5" />
+        <textarea value={x} placeholder={c.ayuda} onChange={(e) => set(e.target.value)} className="campo h-auto max-h-96 min-h-16 py-1.5 [field-sizing:content]" />
       ) : (
         <input type={c.tipo === 'mes' ? 'month' : 'text'} value={x} placeholder={c.tipo === 'mes' ? undefined : c.ayuda} onChange={(e) => set(e.target.value)} className="campo" />
       )}
@@ -925,7 +1001,7 @@ function EditorPost({ p, pilares, hacer, ocupado }: { p: PostLi; pilares: string
             <button key={x} disabled={ocupado} onClick={() => x !== p.estado && guardar({ estado: x })} className={`rounded px-2 py-0.5 ${p.estado === x ? `bg-accent ${COLOR_POST[x]}` : 'text-muted-foreground'}`}>{x}</button>
           ))}
         </div>
-        <select className="campo w-auto" value={p.pilar} onChange={(e) => guardar({ pilar: e.target.value })}>
+        <select className="campo w-auto max-w-full" value={p.pilar} onChange={(e) => guardar({ pilar: e.target.value })}>
           <option value="">Sin pilar</option>
           {[...new Set([...pilares, p.pilar].filter(Boolean))].map((x) => <option key={x}>{x}</option>)}
         </select>
@@ -977,7 +1053,7 @@ function Ideas({ li, hacer, ocupado }: { li: Li; hacer: Hacer; ocupado: boolean 
     })
   }
   return (
-    <div className="max-w-5xl space-y-3">
+    <div className="mx-auto max-w-5xl space-y-3">
       <div className="flex flex-wrap gap-2">
         <input ref={idea} className={`campo flex-[3] ${falta && !v.idea.trim() ? 'border-destructive' : ''}`} placeholder="Idea: qué te pasó o qué opinas" value={v.idea} onChange={set('idea')} onKeyDown={(e) => e.key === 'Enter' && agregar()} />
         <input className="campo flex-[2]" placeholder="Fuente (experiencia propia, una noticia…)" value={v.fuente} onChange={set('fuente')} />
@@ -1023,7 +1099,7 @@ function Voz({ li, hacer, ocupado }: { li: Li; hacer: Hacer; ocupado: boolean })
   const [v, setV] = useState(li.voz)
   const cambio = li.camposVoz.some((c) => (v[c.id] ?? '') !== (li.voz[c.id] ?? ''))
   return (
-    <div className="max-w-3xl space-y-4">
+    <div className="mx-auto max-w-3xl space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <p className="flex-1 text-sm text-muted-foreground">Tu forma de escribir, para que los posts suenen a ti. Claude la lee antes de cada borrador y anota lo que le corriges.</p>
         <Boton tam="xs" onClick={() => hacer(() => api.claude('semana', 'voz'))}><Bot /> {Object.values(li.voz).some(Boolean) ? 'Afinar mi voz con Claude' : 'Armar mi voz con Claude'}</Boton>
@@ -1076,7 +1152,7 @@ function Guia({ s, hacer, ir }: { s: Estado; hacer: Hacer; ir: Ir }) {
   const sigue = pasos.find((x) => !x.ok && !x.opcional) ?? pasos.find((x) => !x.ok)
   const grupos = [...new Set(pasos.map((x) => x.grupo))]
   return (
-    <div className="max-w-3xl space-y-5">
+    <div className="mx-auto max-w-3xl space-y-5">
       <div className="space-y-2">
         <Titulo>Guía: de cero a postular</Titulo>
         <p className="text-sm text-muted-foreground">
@@ -1127,62 +1203,112 @@ function ListaArchivos({ rutas, hacer, vacio }: { rutas: string[]; hacer: Hacer;
   )
 }
 
-const Tarjeta = ({ t, d, children }: { t: string; d: ReactNode; children: ReactNode }) => (
-  <section className="space-y-3 rounded-lg border border-border bg-card p-4">
+const Bloque = ({ t, d, children }: { t: string; d?: ReactNode; children: ReactNode }) => (
+  <section className="space-y-2 border-t border-border pt-4 first:border-0 first:pt-0">
     <div>
-      <h3 className="text-sm font-semibold">{t}</h3>
-      <p className="mt-0.5 text-xs text-muted-foreground">{d}</p>
+      <h4 className="text-sm font-medium">{t}</h4>
+      {d && <p className="mt-0.5 text-xs text-muted-foreground">{d}</p>}
     </div>
     {children}
   </section>
 )
 
+type IdFuente = 'cv' | 'linkedin' | 'git' | 'notas' | 'gmail' | 'otros'
+
 /** El material del que sale el perfil. Todo queda en fuentes/ de la carpeta de datos (no se publica); los tokens, en este computador. */
 function Fuentes({ s, hacer, ocupado, ir }: { s: Estado; hacer: Hacer; ocupado: boolean; ir: Ir }) {
   const f = s.fuentes!
+  const [sel, setSel] = useState<IdFuente>('cv')
   const [nota, setNota] = useState({ titulo: '', texto: '' })
   const csv = Object.entries(f.linkedin)
+  const n = (x: number, uno: string, varios: string, vacio: string) => (x ? `${x} ${x === 1 ? uno : varios}` : vacio)
+  const lista: { id: IdFuente; t: string; estado: string; ok: boolean; d: string }[] = [
+    { id: 'cv', t: 'CV y documentos', estado: n(f.cv.length, 'archivo', 'archivos', 'Vacío'), ok: f.cv.length > 0, d: 'Tu CV en PDF (el actual y los antiguos), certificados, cartas de recomendación, evaluaciones de desempeño.' },
+    { id: 'linkedin', t: 'LinkedIn', estado: csv.length ? `${csv.length} archivos importados` : 'Sin importar', ok: csv.length > 0, d: 'Tu exportación de datos de LinkedIn: cargos, educación, habilidades, recomendaciones y posts.' },
+    { id: 'git', t: 'Git', estado: n(f.git.length, 'resumen', 'resúmenes', 'Sin configurar'), ok: f.git.length > 0, d: 'Lo que construiste, sacado de tus repos públicos y privados: periodo, volumen, lenguajes y mensajes de tus commits, y tus PRs. Queda como resumen en fuentes/git/; no se copia código.' },
+    { id: 'notas', t: 'Notas', estado: n(f.notas.length, 'nota', 'notas', 'Sin notas'), ok: f.notas.length > 0, d: 'Lo que no es un archivo: tu perfil de otro portal, una evaluación, apuntes de lo que hiciste en un trabajo.' },
+    { id: 'gmail', t: 'Gmail', estado: n(s.gmail?.length ?? 0, 'cuenta', 'cuentas', 'Sin conectar'), ok: !!s.gmail?.length, d: 'Correos de reclutadores y empresas, solo lectura. Se conecta y se lee en la Bandeja.' },
+    { id: 'otros', t: 'Otros archivos', estado: n(f.otros.length, 'archivo', 'archivos', 'Vacío'), ok: f.otros.length > 0, d: 'Lo que no calce en lo demás: capturas, presentaciones, chats exportados.' }
+  ]
+  const x = lista.find((l) => l.id === sel)!
   return (
-    <div className="max-w-4xl space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex-1">
-          <Titulo>Fuentes</Titulo>
-          <p className="text-xs text-muted-foreground">De aquí sale tu perfil. Todo queda en fuentes/ de tu carpeta de datos, que no se versiona ni se publica. Lo que se genere a partir de esto deja fuera lo sensible (cifras internas, datos de clientes, nombres de terceros).</p>
+    <div className="mx-auto flex max-w-5xl gap-5">
+      <div className="w-60 shrink-0 space-y-3">
+        <Titulo>Fuentes</Titulo>
+        <p className="text-xs text-muted-foreground">De aquí sale tu perfil.</p>
+        <div className="space-y-0.5">
+          {lista.map((l) => (
+            <button key={l.id} onClick={() => setSel(l.id)} className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm ${l.id === sel ? 'bg-accent' : 'hover:bg-accent/60'}`}>
+              <span className={`w-4 ${l.ok ? 'text-ok' : 'text-muted-foreground'}`}>{l.ok ? <Check className="size-4" /> : '·'}</span>
+              <span className="flex-1">
+                <span className="block">{l.t}</span>
+                <span className="block text-2xs text-muted-foreground">{l.estado}</span>
+              </span>
+            </button>
+          ))}
         </div>
-        <Boton tam="sm" onClick={() => hacer(() => api.claude('perfil', 'importar'))}><Bot /> Importar al perfil con Claude</Boton>
-        <Boton tam="sm" variante="outline" onClick={() => ir('perfil')}>Llenar a mano en Perfil</Boton>
+        <div className="space-y-2 rounded-md border border-border p-2 text-xs text-muted-foreground">
+          <p>Con tu material listo, pásalo al perfil:</p>
+          <Boton tam="xs" onClick={() => hacer(() => api.claude('perfil', 'importar'))}><Bot /> Importar con Claude</Boton>
+          <Boton tam="xs" variante="outline" onClick={() => ir('perfil')}>Llenar a mano en Perfil</Boton>
+        </div>
+        <p className="text-2xs text-muted-foreground">Todo queda en fuentes/ de tu carpeta de datos, que no se versiona ni se publica, y lo que se saque de aquí deja fuera lo sensible (cifras internas, clientes, terceros).</p>
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Tarjeta t="CV y documentos" d="Tu CV en PDF (el actual y los antiguos), certificados, cartas de recomendación, evaluaciones de desempeño.">
-          <ListaArchivos rutas={f.cv} hacer={hacer} vacio="Todavía no hay documentos." />
-          <Boton tam="xs" variante="outline" disabled={ocupado} onClick={() => hacer(() => api.agregarFuentes('cv'))}><Plus /> Agregar archivos</Boton>
-        </Tarjeta>
-        <Tarjeta t="LinkedIn" d={<>Pide tu copia en LinkedIn (Configuración › Privacidad de datos › Obtener una copia de tus datos; la «completa» trae más) y elige aquí el .zip. Se guardan solo los archivos sobre ti; mensajes, contactos e invitaciones se descartan.</>}>
-          {csv.length ? <p className="text-xs">{csv.map(([k, n]) => `${k} (${n})`).join(' · ')}</p> : <p className="text-xs text-muted-foreground">Sin importar.</p>}
-          <div className="flex flex-wrap gap-2">
-            <Boton tam="xs" variante="outline" onClick={() => api.abrir('https://www.linkedin.com/mypreferences/d/download-my-data')}><ExternalLink /> Pedir mi copia</Boton>
-            <Boton tam="xs" variante="outline" disabled={ocupado} onClick={() => hacer(() => api.importarLinkedin())}><Plus /> Importar .zip</Boton>
-            {csv.length > 0 && <Boton tam="xs" variante="ghost" onClick={() => hacer(() => api.abrirArchivo('fuentes/linkedin'))}><FolderOpen /> Carpeta</Boton>}
-          </div>
-        </Tarjeta>
-      </div>
-      <Git f={f} hacer={hacer} ocupado={ocupado} />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Tarjeta t="Notas y texto pegado" d="Lo que no es un archivo: tu perfil de otro portal, una evaluación, apuntes de lo que hiciste en un trabajo.">
-          <ListaArchivos rutas={f.notas} hacer={hacer} vacio="Sin notas." />
-          <input className="campo" placeholder="Título (p. ej. «Perfil en otro portal»)" value={nota.titulo} onChange={(e) => setNota({ ...nota, titulo: e.target.value })} />
-          <textarea className="campo" rows={4} placeholder="Pega el texto" value={nota.texto} onChange={(e) => setNota({ ...nota, texto: e.target.value })} />
-          <Boton tam="xs" variante="outline" disabled={!nota.titulo.trim() || !nota.texto.trim() || ocupado} onClick={() => hacer(() => api.guardarNota(nota.titulo, nota.texto).then((r) => (setNota({ titulo: '', texto: '' }), r)))}><Plus /> Guardar nota</Boton>
-        </Tarjeta>
-        <div className="space-y-4">
-          <Tarjeta t="Gmail" d="Correos de reclutadores y empresas (solo lectura). Se configura y se lee en la Bandeja.">
-            <p className="text-xs">{s.gmail?.length ? s.gmail.join(' · ') : 'Sin cuentas.'}</p>
-            <Boton tam="xs" variante="outline" onClick={() => ir('bandeja')}><Mail /> Ir a la Bandeja</Boton>
-          </Tarjeta>
-          <Tarjeta t="Otros archivos" d="Lo que no calce arriba: capturas, presentaciones, chats exportados.">
-            <ListaArchivos rutas={f.otros} hacer={hacer} vacio="Nada." />
-            <Boton tam="xs" variante="outline" disabled={ocupado} onClick={() => hacer(() => api.agregarFuentes('otros'))}><Plus /> Agregar archivos</Boton>
-          </Tarjeta>
+      <div className="min-w-0 max-w-3xl flex-1 space-y-4">
+        <div>
+          <Titulo>{x.t}</Titulo>
+          <p className="mt-1 text-xs text-muted-foreground">{x.d}</p>
+        </div>
+        <div className="space-y-4 rounded-lg border border-border bg-card p-4">
+          {sel === 'cv' && (
+            <>
+              <ListaArchivos rutas={f.cv} hacer={hacer} vacio="Todavía no hay documentos." />
+              <Boton tam="xs" variante="outline" disabled={ocupado} onClick={() => hacer(() => api.agregarFuentes('cv'))}><Plus /> Agregar archivos</Boton>
+            </>
+          )}
+          {sel === 'linkedin' && (
+            <>
+              <Bloque t="1 · Pide tu copia" d="En LinkedIn: Configuración › Privacidad de datos › Obtener una copia de tus datos. La «completa» trae más; llega por correo en minutos o hasta un día.">
+                <Boton tam="xs" variante="outline" onClick={() => api.abrir('https://www.linkedin.com/mypreferences/d/download-my-data')}><ExternalLink /> Abrir LinkedIn</Boton>
+              </Bloque>
+              <Bloque t="2 · Importa el .zip" d="Se guardan solo los archivos sobre ti; mensajes, contactos e invitaciones se descartan.">
+                <div className="flex flex-wrap gap-2">
+                  <Boton tam="xs" disabled={ocupado} onClick={() => hacer(() => api.importarLinkedin())}><Plus /> Importar .zip</Boton>
+                  {csv.length > 0 && <Boton tam="xs" variante="ghost" onClick={() => hacer(() => api.abrirArchivo('fuentes/linkedin'))}><FolderOpen /> Ver carpeta</Boton>}
+                </div>
+              </Bloque>
+              {csv.length > 0 && (
+                <Bloque t="Importado">
+                  <ul className="grid grid-cols-2 gap-x-4 text-sm">
+                    {csv.map(([k, c]) => <li key={k} className="flex justify-between"><span>{k}</span><span className="text-muted-foreground">{c}</span></li>)}
+                  </ul>
+                </Bloque>
+              )}
+            </>
+          )}
+          {sel === 'git' && <Git f={f} hacer={hacer} ocupado={ocupado} />}
+          {sel === 'notas' && (
+            <>
+              <ListaArchivos rutas={f.notas} hacer={hacer} vacio="Sin notas." />
+              <Bloque t="Nota nueva">
+                <input className="campo" placeholder="Título (p. ej. «Perfil en otro portal»)" value={nota.titulo} onChange={(e) => setNota({ ...nota, titulo: e.target.value })} />
+                <textarea className="campo" rows={6} placeholder="Pega el texto" value={nota.texto} onChange={(e) => setNota({ ...nota, texto: e.target.value })} />
+                <Boton tam="xs" disabled={!nota.titulo.trim() || !nota.texto.trim() || ocupado} onClick={() => hacer(() => api.guardarNota(nota.titulo, nota.texto).then((r) => (setNota({ titulo: '', texto: '' }), r)))}><Plus /> Guardar nota</Boton>
+              </Bloque>
+            </>
+          )}
+          {sel === 'gmail' && (
+            <>
+              <p className="text-sm">{s.gmail?.length ? s.gmail.join(' · ') : 'Sin cuentas conectadas.'}</p>
+              <Boton tam="xs" variante="outline" onClick={() => ir('bandeja')}><Mail /> {s.gmail?.length ? 'Ir a la Bandeja' : 'Conectar en la Bandeja'}</Boton>
+            </>
+          )}
+          {sel === 'otros' && (
+            <>
+              <ListaArchivos rutas={f.otros} hacer={hacer} vacio="Nada." />
+              <Boton tam="xs" variante="outline" disabled={ocupado} onClick={() => hacer(() => api.agregarFuentes('otros'))}><Plus /> Agregar archivos</Boton>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -1196,37 +1322,38 @@ function Git({ f, hacer, ocupado }: { f: NonNullable<Estado['fuentes']>; hacer: 
   const lista = ids.split(/\r?\n/).map((x) => x.trim()).filter(Boolean)
   const cambio = lista.join('\n') !== f.identidades.join('\n')
   return (
-    <Tarjeta t="Git: tus commits y PRs" d="Lo que construiste, sacado de tus repos (públicos y privados): periodo, volumen, lenguajes y mensajes de tus commits, y tus PRs o merge requests. Va a fuentes/git/ como resumen; no se copia código.">
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="space-y-2">
-          <div className="text-xs font-medium">Repos en este computador</div>
+    <>
+      <Bloque t="1 · Repos en este computador" d="Las carpetas donde tienes tus repos; se buscan hasta tres niveles adentro.">
+        {f.carpetas.length > 0 && (
           <ul className="space-y-0.5 text-sm">
             {f.carpetas.map((x) => (
               <li key={x} className="flex items-center gap-2">
+                <FolderOpen className="size-3.5 text-muted-foreground" />
                 <span className="min-w-0 flex-1 truncate" title={x}>{x}</span>
                 <button title="Quitar" className="text-muted-foreground hover:text-destructive" onClick={() => hacer(() => api.carpetaGit(x))}><X className="size-3.5" /></button>
               </li>
             ))}
           </ul>
-          <Boton tam="xs" variante="outline" onClick={() => hacer(() => api.carpetaGit())}><FolderOpen /> Agregar carpeta</Boton>
-          <Campo t="Tus correos o nombres de git (uno por línea)">
-            <textarea className="campo" rows={3} value={ids} onChange={(e) => setIds(e.target.value)} placeholder="tu.correo@empresa.com" />
-          </Campo>
-          <div className="flex flex-wrap gap-2">
-            <Boton tam="xs" variante="outline" disabled={!cambio} onClick={() => hacer(() => api.identidadesGit(lista))}>Guardar correos</Boton>
-            <Boton tam="xs" variante="ghost" disabled={!f.carpetas.length} onClick={() => void api.autoresGit().then(setSugeridos)}>¿Cuáles soy yo?</Boton>
-            <Boton tam="xs" disabled={ocupado || !f.carpetas.length || !f.identidades.length} onClick={() => hacer(() => api.leerGitLocal())}><RefreshCw className={ocupado ? 'animate-spin' : ''} /> Leer mis repos</Boton>
+        )}
+        <Boton tam="xs" variante="outline" onClick={() => hacer(() => api.carpetaGit())}><Plus /> Agregar carpeta</Boton>
+      </Bloque>
+      <Bloque t="2 · Quién eres en git" d="Tus correos o nombres de autor, uno por línea: solo se cuentan tus commits. «¿Cuáles soy yo?» muestra los autores de tus repos.">
+        <textarea className="campo" rows={3} value={ids} onChange={(e) => setIds(e.target.value)} placeholder="tu.correo@empresa.com" />
+        {sugeridos && (
+          <div className="flex flex-wrap gap-1">
+            {sugeridos.filter((x) => !lista.includes(x.autor)).map((x) => (
+              <button key={x.autor} className="rounded border border-border px-1.5 py-0.5 text-2xs hover:bg-accent" onClick={() => setIds([...lista, x.autor].join('\n'))}>+ {x.autor} ({x.commits})</button>
+            ))}
           </div>
-          {sugeridos && (
-            <div className="flex flex-wrap gap-1">
-              {sugeridos.filter((x) => !lista.includes(x.autor)).map((x) => (
-                <button key={x.autor} className="rounded border border-border px-1.5 py-0.5 text-2xs hover:bg-accent" onClick={() => setIds([...lista, x.autor].join('\n'))}>+ {x.autor} ({x.commits})</button>
-              ))}
-            </div>
-          )}
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Boton tam="xs" variante="outline" disabled={!f.carpetas.length} onClick={() => void api.autoresGit().then(setSugeridos)}>¿Cuáles soy yo?</Boton>
+          <Boton tam="xs" variante="outline" disabled={!cambio} onClick={() => hacer(() => api.identidadesGit(lista))}>Guardar</Boton>
+          <Boton tam="xs" disabled={ocupado || cambio || !f.carpetas.length || !f.identidades.length} onClick={() => hacer(() => api.leerGitLocal())}><RefreshCw className={ocupado ? 'animate-spin' : ''} /> Leer mis repos</Boton>
         </div>
-        <div className="space-y-2">
-          <div className="text-xs font-medium">Cuentas (incluye repos privados)</div>
+      </Bloque>
+      <Bloque t="3 · Cuentas de GitHub o GitLab (opcional)" d="Suma tus repos privados y tus PRs o merge requests. El token es de solo lectura y queda solo en este computador.">
+        {f.cuentas.length > 0 && (
           <ul className="space-y-0.5 text-sm">
             {f.cuentas.map((x) => (
               <li key={x.tipo + x.usuario} className="flex items-center gap-2">
@@ -1235,29 +1362,28 @@ function Git({ f, hacer, ocupado }: { f: NonNullable<Estado['fuentes']>; hacer: 
               </li>
             ))}
           </ul>
-          <div className="flex gap-2">
-            <select className="campo w-auto" value={c.tipo} onChange={(e) => setC({ ...c, tipo: e.target.value as 'github' | 'gitlab' })}>
-              <option value="github">GitHub</option>
-              <option value="gitlab">GitLab</option>
-            </select>
-            {c.tipo === 'gitlab' && <input className="campo" value={c.host} onChange={(e) => setC({ ...c, host: e.target.value })} />}
-          </div>
-          <p className="text-2xs text-muted-foreground">
-            {c.tipo === 'github' ? 'Token «fine-grained» de solo lectura: todos tus repos, permisos Contents y Metadata en «Read-only».' : 'Token personal con el permiso read_api.'} Queda solo en este computador.{' '}
-            <button className="underline" onClick={() => api.abrir(c.tipo === 'github' ? 'https://github.com/settings/personal-access-tokens/new' : `${c.host.replace(/\/$/, '')}/-/user_settings/personal_access_tokens`)}>Crear token</button>
-          </p>
+        )}
+        <div className="flex gap-2">
+          <select className="campo w-auto" value={c.tipo} onChange={(e) => setC({ ...c, tipo: e.target.value as 'github' | 'gitlab' })}>
+            <option value="github">GitHub</option>
+            <option value="gitlab">GitLab</option>
+          </select>
+          {c.tipo === 'gitlab' && <input className="campo" value={c.host} onChange={(e) => setC({ ...c, host: e.target.value })} />}
           <input className="campo font-mono" type="password" placeholder="Token" value={c.token} onChange={(e) => setC({ ...c, token: e.target.value })} />
-          <div className="flex flex-wrap gap-2">
-            <Boton tam="xs" disabled={!c.token.trim() || ocupado} onClick={() => hacer(() => api.conectarGit(c.tipo, c.host, c.token).then((r) => (setC({ ...c, token: '' }), r)))}><RefreshCw className={ocupado ? 'animate-spin' : ''} /> Conectar y leer</Boton>
-            {f.cuentas.length > 0 && <Boton tam="xs" variante="ghost" disabled={ocupado} onClick={() => hacer(() => api.leerCuentasGit())}>Volver a leer las cuentas</Boton>}
-          </div>
         </div>
-      </div>
-      <div className="space-y-1 border-t border-border pt-2">
-        <div className="text-xs font-medium">Resúmenes ({f.git.length})</div>
-        <ListaArchivos rutas={f.git} hacer={hacer} vacio="Todavía no hay resúmenes: agrega una carpeta y tus correos, o conecta una cuenta." />
-      </div>
-    </Tarjeta>
+        <p className="text-2xs text-muted-foreground">
+          {c.tipo === 'github' ? 'Token «fine-grained»: todos tus repos, permisos Contents y Metadata en «Read-only».' : 'Token personal con el permiso read_api.'}{' '}
+          <button className="underline" onClick={() => api.abrir(c.tipo === 'github' ? 'https://github.com/settings/personal-access-tokens/new' : `${c.host.replace(/\/$/, '')}/-/user_settings/personal_access_tokens`)}>Crear token</button>
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Boton tam="xs" disabled={!c.token.trim() || ocupado} onClick={() => hacer(() => api.conectarGit(c.tipo, c.host, c.token).then((r) => (setC({ ...c, token: '' }), r)))}><RefreshCw className={ocupado ? 'animate-spin' : ''} /> Conectar y leer</Boton>
+          {f.cuentas.length > 0 && <Boton tam="xs" variante="ghost" disabled={ocupado} onClick={() => hacer(() => api.leerCuentasGit())}>Volver a leer</Boton>}
+        </div>
+      </Bloque>
+      <Bloque t={`Resúmenes (${f.git.length})`}>
+        <ListaArchivos rutas={f.git} hacer={hacer} vacio="Aparecen aquí al leer tus repos o conectar una cuenta." />
+      </Bloque>
+    </>
   )
 }
 
