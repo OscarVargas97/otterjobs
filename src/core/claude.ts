@@ -1,6 +1,6 @@
 // «Preguntarle a Claude»: abre Claude Code interactivo (suscripción, no API ni `claude -p`) en la carpeta de datos,
+// en una terminal dentro de la app (src/main/terminal.ts),
 // con el plugin metodo/ (reglas y comandos). La app solo arma el pedido; el criterio y la redacción quedan en Claude.
-import { spawn } from 'node:child_process'
 import { join } from 'node:path'
 import type { Fila } from './tracker.ts'
 
@@ -17,19 +17,12 @@ export const PEDIDOS = {
 } as const
 export type Pedido = keyof typeof PEDIDOS
 
-/** El texto que recibe Claude. Sin `;` porque Windows Terminal lo usa para separar comandos. */
+/** El texto que recibe Claude: un solo argumento, sin comillas ni `%` porque en Windows pasa por cmd.exe. */
 export function armarPedido(pedido: Pedido, fila?: Pick<Fila, 'orden' | 'empresa' | 'cargo'>): string {
   if (!fila) return PEDIDOS[pedido]
-  return `${PEDIDOS[pedido]} #${fila.orden} ${fila.empresa}, ${fila.cargo}`.replace(/;/g, ',').replace(/[\r\n"]+/g, ' ')
+  return `${PEDIDOS[pedido]} #${fila.orden} ${fila.empresa}, ${fila.cargo}`.replace(/;/g, ',').replace(/[\r\n"%]+/g, ' ')
 }
 
-/** `metodo`: la carpeta del plugin (en la app empaquetada, fuera del asar para que Claude Code la lea).
+/** Argumentos de `claude`. `metodo`: la carpeta del plugin (en la app empaquetada, fuera del asar para que Claude Code la lea).
  *  Su settings.json deja fuera el CLAUDE.md de desarrollo de otterjobs cuando los datos están en otterjobs/datos. */
-export function abrirClaude(cwd: string, metodo: string, texto: string): void {
-  const claude = ['claude', '--plugin-dir', metodo, '--settings', join(metodo, 'settings.json'), texto]
-  const [cmd, args] =
-    process.platform === 'win32'
-      ? ['wt.exe', ['-d', cwd, '--title', 'otterjobs · Claude', ...claude]]
-      : ['x-terminal-emulator', ['-e', ...claude]]
-  spawn(cmd, args, { cwd, detached: true, stdio: 'ignore' }).unref()
-}
+export const argsClaude = (metodo: string, texto: string) => ['--plugin-dir', metodo, '--settings', join(metodo, 'settings.json'), texto]

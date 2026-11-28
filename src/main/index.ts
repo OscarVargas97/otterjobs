@@ -2,12 +2,13 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { watch, type FSWatcher } from 'node:fs'
 import { join } from 'node:path'
 import { VelopackApp } from 'velopack'
-import { abrirClaude, armarPedido, PEDIDOS, type Pedido } from '../core/claude.ts'
-import { carpetaDatos, credencialesGmail, guardarCarpetaDatos, RUTA_ENV, rutas } from '../core/config.ts'
-import { enlaceGmail, escanear, leerInbox, marcarRevisado } from '../core/gmail.ts'
+import { argsClaude, armarPedido, PEDIDOS, type Pedido } from '../core/claude.ts'
+import { carpetaDatos, credencialesGmail, guardarCarpetaDatos, guardarCredencialesGmail, RUTA_ENV, rutas } from '../core/config.ts'
+import { enlaceGmail, escanear, leerInbox, marcarRevisado, probarGmail } from '../core/gmail.ts'
 import { usar, type Db } from '../core/db.ts'
 import { agregarPendiente, leerPendientes, marcarPendiente } from '../core/pendientes.ts'
 import { actualizar, agregar, historial, isoHoy, leer, tareas } from '../core/tracker.ts'
+import { abrirTerminal, cerrarTerminales } from './terminal.ts'
 
 // Velopack: instalar, actualizar y desinstalar corren aquí antes que nada.
 VelopackApp.build().run()
@@ -26,7 +27,7 @@ function estado() {
     tareas: tareas(filas),
     pendientes,
     inbox: leerInbox(r.inbox).map((c) => ({ ...c, enlace: enlaceGmail(c.id) })),
-    gmail: !!credencialesGmail(),
+    gmail: credencialesGmail()?.user ?? null,
     rutaEnv: RUTA_ENV,
     version: app.getVersion()
   }
@@ -93,6 +94,14 @@ manejar('escanear', async (dias) => {
   const r = datosOk()
   await escanear(cred, usar(r.db, leer), r.inbox, Number.isInteger(dias) ? (dias as number) : 7)
 })
+manejar('configurarGmail', async (user, pass) => {
+  const cred = { user: texto(user, 200).trim(), pass: texto(pass, 100).replace(/\s/g, '') }
+  if (!/^\S+@\S+$/.test(cred.user) || cred.pass.length !== 16) throw new Error('Revisa el correo y que la contraseña de aplicación tenga 16 letras')
+  await probarGmail(cred)
+  guardarCredencialesGmail(cred)
+  const r = datosOk()
+  await escanear(cred, usar(r.db, leer), r.inbox, 30) // primera vez: el último mes
+})
 manejar('revisado', (ids) => {
   if (ids !== 'todos' && !(Array.isArray(ids) && ids.every((i) => typeof i === 'string'))) throw new Error('dato inválido')
   marcarRevisado(datosOk().inbox, ids as string[] | 'todos', isoHoy())
@@ -101,7 +110,9 @@ manejar('claude', (pedido, orden) => {
   if (typeof pedido !== 'string' || !Object.hasOwn(PEDIDOS, pedido)) throw new Error('pedido inválido')
   const r = datosOk()
   const fila = orden ? usar(r.db, leer).find((f) => f.orden === orden) : undefined
-  abrirClaude(r.datos, join(app.getAppPath(), 'metodo').replace('app.asar', 'app.asar.unpacked'), armarPedido(pedido as Pedido, fila))
+  const metodo = join(app.getAppPath(), 'metodo').replace('app.asar', 'app.asar.unpacked')
+  const titulo = fila ? `${pedido} · ${fila.empresa}` : pedido
+  abrirTerminal(win!.webContents, r.datos, titulo, 'claude', argsClaude(metodo, armarPedido(pedido as Pedido, fila)))
 })
 ipcMain.handle('historial', (_e, orden) => conDb((db) => historial(db, texto(orden, 5))))
 ipcMain.on('abrir', (_e, url) => {
@@ -125,3 +136,4 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => app.quit())
+app.on('before-quit', cerrarTerminales)

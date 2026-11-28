@@ -19,10 +19,11 @@ try {
     pnpm build
     if ($LASTEXITCODE) { throw 'electron-vite build falló' }
     Remove-Item $publicado -Recurse -Force -ErrorAction SilentlyContinue
-    # Solo entra out/ y las dependencias de producción: el código fuente y la config quedan fuera.
+    # Solo entra out/ y las dependencias de producción: el código fuente, la config y datos/ (los de la persona) quedan fuera.
+    # node-pty (binario nativo) y metodo/ van fuera del asar: los cargan conpty y Claude Code.
     pnpm exec electron-packager . otterjobs --platform=win32 --arch=x64 --out=$publicado --overwrite `
-        --app-version=$numerica --build-version=$numerica --asar.unpackDir=metodo `
-        --ignore='^/(src|scripts|artefactos|\.github|docs)($|/)' --ignore='^/(tsconfig|electron\.vite\.config)\.' --ignore='^/[^/]+\.md$'
+        --app-version=$numerica --build-version=$numerica --asar.unpackDir="{metodo,node_modules/node-pty}" `
+        --ignore='^/(src|scripts|artefactos|datos|\.github|docs)($|/)' --ignore='^/(tsconfig|electron\.vite\.config)\.' --ignore='^/[^/]+\.md$'
     if ($LASTEXITCODE) { throw 'electron-packager falló' }
 } finally { Pop-Location }
 
