@@ -45,4 +45,11 @@ export function credencialesGmail(): Credenciales | null {
   return user && pass ? { user, pass } : null
 }
 
+/** Guarda las credenciales en ~/.otterjobs/.env, conservando las demás líneas. Solo legible por el usuario. */
+export function guardarCredencialesGmail({ user, pass }: Credenciales): void {
+  mkdirSync(DIR_CONFIG, { recursive: true })
+  const resto = existsSync(ENV) ? readFileSync(ENV, 'utf8').split(/\r?\n/).filter((l) => l.trim() && !/^\s*GMAIL_(USER|APP_PASSWORD)\s*=/.test(l)) : []
+  writeFileSync(ENV, [...resto, `GMAIL_USER=${user}`, `GMAIL_APP_PASSWORD=${pass}`, ''].join('\n'), { mode: 0o600 })
+}
+
 export const RUTA_ENV = ENV

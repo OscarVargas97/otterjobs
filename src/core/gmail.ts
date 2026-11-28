@@ -51,6 +51,18 @@ export function marcarRevisado(ruta: string, ids: string[] | 'todos', hoy: strin
 
 export type Credenciales = { user: string; pass: string }
 
+/** Prueba el acceso antes de guardar las credenciales. */
+export async function probarGmail(cred: Credenciales): Promise<void> {
+  const cliente = new ImapFlow({ host: 'imap.gmail.com', port: 993, secure: true, auth: cred, logger: false })
+  try {
+    await cliente.connect()
+  } catch (e) {
+    const auth = (e as { authenticationFailed?: boolean }).authenticationFailed
+    throw new Error(auth ? 'Gmail rechazó el correo o la contraseña de aplicación. Revisa que sea la de 16 letras, no tu contraseña normal.' : `No se pudo conectar a Gmail: ${(e as Error).message}`)
+  }
+  await cliente.logout()
+}
+
 export async function escanear(cred: Credenciales, filas: Fila[], rutaInbox: string, dias = 7): Promise<{ nuevos: number; pendientes: number }> {
   const correos = leerInbox(rutaInbox)
   const vistos = new Set(correos.map((c) => c.id))
