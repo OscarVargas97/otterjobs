@@ -19,6 +19,8 @@ const api = {
   guardarEtapa: llamar('guardarEtapa'),
   pdfCv: llamar('pdfCv'),
   abrirArchivo: llamar('abrirArchivo'),
+  archivos: llamar('archivos'),
+  leerArchivo: llamar('leerArchivo'),
   abrir: (url: string) => ipcRenderer.send('abrir', url),
   terminal: {
     escribir: (id: number, d: string) => ipcRenderer.send('pty:escribir', id, d),

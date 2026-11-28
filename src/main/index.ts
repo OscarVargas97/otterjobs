@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
-import { existsSync, watch, type FSWatcher } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, readdirSync, readFileSync, statSync, watch, type FSWatcher } from 'node:fs'
+import { isAbsolute, join, relative, resolve } from 'node:path'
 import { VelopackApp } from 'velopack'
 import { argsClaude, armarPedido, PEDIDOS, type Pedido } from '../core/claude.ts'
 import { carpetaDatos, cuentasGmail, guardarCarpetaDatos, guardarCuentaGmail, quitarCuentaGmail, rutas } from '../core/config.ts'
@@ -148,13 +148,31 @@ manejar('pdfCv', () => {
   if (!existsSync(join(r.datos, 'cv', 'cv.html'))) throw new Error('Primero guarda la etapa CV')
   aPdf(join(r.datos, 'cv', 'cv.html'), join(r.datos, 'cv', 'cv.pdf'))
 })
-// Solo estas rutas de la carpeta de datos: la interfaz no abre archivos arbitrarios.
-const ARCHIVOS = { fuentes: 'fuentes', cv: 'cv/cv.html', pdf: 'cv/cv.pdf' } as const
-manejar('abrirArchivo', async (que) => {
-  if (typeof que !== 'string' || !Object.hasOwn(ARCHIVOS, que)) throw new Error('dato inválido')
-  const f = join(datosOk().datos, ARCHIVOS[que as keyof typeof ARCHIVOS])
+/** Una ruta relativa de la interfaz, solo dentro de la carpeta de datos. */
+function enDatos(rel: unknown): string {
+  const d = datosOk().datos
+  const f = resolve(d, texto(rel, 500))
+  const r = relative(d, f)
+  if (r.startsWith('..') || isAbsolute(r)) throw new Error('Ruta fuera de la carpeta de datos')
+  return f
+}
+// Carpetas y documentos; nada ejecutable (.exe, .bat, .lnk…) aunque esté en los datos.
+const ABRIBLES = /\.(pdf|html?|md|txt|docx?|png|jpe?g)$/i
+manejar('abrirArchivo', async (rel) => {
+  const f = enDatos(rel)
+  if (!existsSync(f)) throw new Error(`No existe ${rel}`)
+  if (!statSync(f).isDirectory() && !ABRIBLES.test(f)) throw new Error('Ese tipo de archivo no se abre desde la app')
   const error = await shell.openPath(f)
   if (error) throw new Error(error)
+})
+ipcMain.handle('archivos', (_e, rel) => {
+  const f = enDatos(rel)
+  return existsSync(f) && statSync(f).isDirectory() ? readdirSync(f, { withFileTypes: true }).filter((x) => x.isFile()).map((x) => x.name) : []
+})
+ipcMain.handle('leerArchivo', (_e, rel) => {
+  const f = enDatos(rel)
+  if (!/\.(md|html?|txt)$/i.test(f)) throw new Error('Solo texto, Markdown o HTML')
+  return existsSync(f) ? readFileSync(f, 'utf8') : null
 })
 ipcMain.handle('historial', (_e, orden) => conDb((db) => historial(db, texto(orden, 5))))
 ipcMain.on('abrir', (_e, url) => {

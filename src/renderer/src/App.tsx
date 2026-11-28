@@ -28,7 +28,7 @@ type Estado = {
 }
 type Api = {
   [k in 'cargar' | 'elegirDatos' | 'actualizar' | 'agregar' | 'marcarPendiente' | 'nuevoPendiente' | 'escanear' | 'configurarGmail' | 'quitarGmail' | 'revisado' | 'claude' | 'guardarEtapa' | 'pdfCv' | 'abrirArchivo']: (...a: unknown[]) => Promise<Estado>
-} & { historial: (orden: string) => Promise<Evento[]>; abrir: (url: string) => void; alCambiar: (cb: (e: Estado) => void) => () => void }
+} & { historial: (orden: string) => Promise<Evento[]>; archivos: (carpeta: string) => Promise<string[]>; leerArchivo: (ruta: string) => Promise<string | null>; abrir: (url: string) => void; alCambiar: (cb: (e: Estado) => void) => () => void }
 const api = (window as unknown as { api: Api }).api
 
 const COLUMNAS = ['Por postular', 'Postulado', 'Entrevista', 'Oferta', 'Cerradas'] as const
@@ -370,6 +370,7 @@ function Detalle({ fila, cerrar, hacer }: { fila: Fila; cerrar: () => void; hace
           <Campo t="Notas"><textarea rows={7} className="campo" value={d.notas} onChange={set('notas')} /></Campo>
         </div>
         <Campo t="Carpeta"><input className="campo" value={d.ficha} onChange={set('ficha')} /></Campo>
+        {fila.ficha && <ArchivosPostulacion carpeta={fila.ficha} hacer={hacer} />}
         {eventos.length > 0 && (
           <div className="space-y-1">
             <span className="text-2xs font-medium text-muted-foreground">Historial</span>
@@ -479,6 +480,7 @@ function Perfil({ s, hacer, ocupado }: { s: Estado; hacer: Hacer; ocupado: boole
   const [etapa, setEtapa] = useState<Etapa>(() => p.estado.siguiente ?? 'hechos')
   const e = p.estado.etapas.find((x) => x.id === etapa)!
   const manual = p.manual.includes(etapa)
+  const [ver, setVer] = useState(false)
   return (
     <div className="flex gap-5">
       <div className="w-60 shrink-0 space-y-3">
@@ -512,14 +514,21 @@ function Perfil({ s, hacer, ocupado }: { s: Estado; hacer: Hacer; ocupado: boole
             <h2 className="text-base font-semibold">{NOMBRE[etapa]}</h2>
             <p className="text-xs text-muted-foreground">{e.archivo} · {p.formulario[etapa].intro}</p>
           </div>
+          <div className="flex rounded-md border border-border p-0.5 text-xs">
+            {(['Formulario', 'Ver archivo'] as const).map((x, i) => (
+              <button key={x} onClick={() => setVer(!!i)} className={`rounded px-2 py-0.5 ${ver === !!i ? 'bg-accent text-foreground' : 'text-muted-foreground'}`}>{x}</button>
+            ))}
+          </div>
           {etapa !== 'revision' && <Boton tam="xs" variante="outline" onClick={() => hacer(() => api.claude('perfil', etapa))}><Bot /> Refinar con Claude</Boton>}
         </div>
+        {ver ? <Visor key={etapa + JSON.stringify(p.valores[etapa] ?? null) + p.estado.etapas.map((x) => x.listo).join()} ruta={e.archivo} /> : <>
         {manual && (
           <p className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs">
             {e.archivo} se escribió fuera de la app y este formulario está vacío. Impórtalo con Claude primero; si guardas igual, el archivo se reemplaza y el actual queda como copia «.anterior».
           </p>
         )}
         <Formulario key={etapa + JSON.stringify(p.valores[etapa] ?? null)} etapa={etapa} p={p} listo={e.listo} hacer={hacer} ocupado={ocupado} />
+        </>}
       </div>
     </div>
   )
@@ -551,9 +560,9 @@ function Formulario({ etapa, p, listo, hacer, ocupado }: { etapa: Etapa; p: NonN
             {p.checks.map((c) => <li key={c.texto} className={c.ok ? 'text-ok' : 'text-muted-foreground'}>{c.ok ? '✓' : '·'} {c.texto}</li>)}
           </ul>
           <div className="flex gap-2">
-            <Boton tam="xs" variante="outline" onClick={() => hacer(() => api.abrirArchivo('cv'))}><ExternalLink /> Ver CV</Boton>
+            <Boton tam="xs" variante="outline" onClick={() => hacer(() => api.abrirArchivo('cv/cv.html'))}><ExternalLink /> Ver CV</Boton>
             <Boton tam="xs" variante="outline" disabled={ocupado} onClick={() => hacer(() => api.pdfCv())}>Exportar PDF</Boton>
-            {p.pdf && <Boton tam="xs" variante="ghost" onClick={() => hacer(() => api.abrirArchivo('pdf'))}>Abrir PDF</Boton>}
+            {p.pdf && <Boton tam="xs" variante="ghost" onClick={() => hacer(() => api.abrirArchivo('cv/cv.pdf'))}>Abrir PDF</Boton>}
           </div>
         </div>
       )}
@@ -606,5 +615,77 @@ function CampoPerfil({ c, v, set }: { c: CampoForm; v: Valores[string] | undefin
       )}
       {c.tipo === 'mes' && c.ayuda && <span className="text-2xs text-muted-foreground">{c.ayuda}</span>}
     </Campo>
+  )
+}
+
+/** Muestra un archivo de los datos: HTML (el CV) en un iframe sin scripts y Markdown con un lector mínimo. */
+function Visor({ ruta, alto = 'h-[70vh]' }: { ruta: string; alto?: string }) {
+  const [t, setT] = useState<string | null | undefined>()
+  useEffect(() => void api.leerArchivo(ruta).then(setT, () => setT(null)), [ruta])
+  if (t === undefined) return <p className="text-xs text-muted-foreground">Cargando…</p>
+  if (t === null) return <p className="text-xs text-muted-foreground">{ruta} todavía no existe.</p>
+  if (/\.html?$/i.test(ruta)) return <iframe title={ruta} sandbox="" srcDoc={t} className={`w-full rounded-md border border-border bg-white ${alto}`} />
+  return <div className={`overflow-auto rounded-md border border-border p-4 ${alto}`}>{/\.md$/i.test(ruta) ? <Markdown texto={t} /> : <pre className="text-xs whitespace-pre-wrap">{t}</pre>}</div>
+}
+
+/** Markdown de los archivos del perfil: títulos, listas, tablas, negrita y código. Todo como texto de React, sin HTML crudo. */
+function Markdown({ texto }: { texto: string }) {
+  const enLinea = (s: string) =>
+    s.split(/(\*\*[^*]+\*\*|`[^`]+`)/).map((p, i) =>
+      p.startsWith('**') && p.endsWith('**') ? <b key={i}>{p.slice(2, -2)}</b> : p.startsWith('`') && p.endsWith('`') ? <code key={i} className="rounded bg-muted px-1">{p.slice(1, -1)}</code> : p.replace(/<br>/g, ' · ')
+    )
+  const celdas = (l: string) => l.trim().replace(/^\||\|$/g, '').split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, '|'))
+  const out: ReactNode[] = []
+  const ls = texto.replace(/<!--[\s\S]*?-->/g, '').split(/\r?\n/)
+  for (let i = 0; i < ls.length; i++) {
+    const l = ls[i]
+    const h = /^(#{1,4}) (.*)/.exec(l)
+    if (h) out.push(<div key={i} className={['', 'text-lg font-semibold mt-2', 'text-base font-semibold mt-4 border-b border-border pb-1', 'text-sm font-semibold mt-3', 'text-sm font-medium mt-2'][h[1].length]}>{enLinea(h[2])}</div>)
+    else if (/^\s*[-*] /.test(l)) {
+      const items: string[] = []
+      for (; i < ls.length && /^\s*[-*] /.test(ls[i]); i++) items.push(ls[i].replace(/^\s*[-*] (\[[ x]\] )?/i, ''))
+      i--
+      out.push(<ul key={i} className="list-disc space-y-0.5 pl-5">{items.map((x, j) => <li key={j}>{enLinea(x)}</li>)}</ul>)
+    } else if (l.startsWith('|')) {
+      const fs: string[][] = []
+      for (; i < ls.length && ls[i].startsWith('|'); i++) if (!/^\|[\s|:-]+\|$/.test(ls[i].trim())) fs.push(celdas(ls[i]))
+      i--
+      out.push(
+        <table key={i} className="w-full border-collapse text-xs">
+          <tbody>{fs.map((f, j) => <tr key={j} className={j ? 'border-t border-border' : 'font-medium text-muted-foreground'}>{f.map((c, k) => <td key={k} className="p-1 align-top">{enLinea(c)}</td>)}</tr>)}</tbody>
+        </table>
+      )
+    } else if (/^---+$/.test(l.trim())) out.push(<hr key={i} className="border-border" />)
+    else if (l.trim()) out.push(<p key={i}>{enLinea(l)}</p>)
+  }
+  return <div className="space-y-2 text-sm">{out}</div>
+}
+
+/** Los archivos de la carpeta de una postulación: el CV (o la ficha) se ve aquí; lo demás se abre afuera. */
+function ArchivosPostulacion({ carpeta, hacer }: { carpeta: string; hacer: Hacer }) {
+  const [fs, setFs] = useState<string[]>([])
+  const [ver, setVer] = useState<string>()
+  useEffect(() => {
+    void api.archivos(carpeta).then((todos) => {
+      const xs = todos.filter((x) => /\.(pdf|html?|md|txt|docx?|png|jpe?g)$/i.test(x))
+      setFs(xs)
+      setVer(xs.find((x) => /^cv.*\.html?$/i.test(x)) ?? xs.find((x) => /\.(md|html?)$/i.test(x)))
+    }, () => setFs([]))
+  }, [carpeta])
+  if (!fs.length) return <p className="text-xs text-muted-foreground">La carpeta {carpeta} no tiene archivos todavía.</p>
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {fs.map((f) =>
+          /\.(md|html?|txt)$/i.test(f) ? (
+            <Boton key={f} tam="xs" variante={ver === f ? 'default' : 'outline'} onClick={() => setVer(f)}>{f}</Boton>
+          ) : (
+            <Boton key={f} tam="xs" variante="ghost" onClick={() => hacer(() => api.abrirArchivo(`${carpeta}/${f}`))}><ExternalLink /> {f}</Boton>
+          )
+        )}
+        <Boton tam="xs" variante="ghost" onClick={() => hacer(() => api.abrirArchivo(carpeta))}><FolderOpen /> Carpeta</Boton>
+      </div>
+      {ver && <Visor ruta={`${carpeta}/${ver}`} />}
+    </div>
   )
 }
