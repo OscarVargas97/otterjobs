@@ -1,6 +1,6 @@
-// El tracker de la carpeta de datos (postulaciones/tracker.csv): UTF-8 con BOM, separador `;`, para que Excel lo abra.
-// Todo cambio pasa por aquí: valida, ordena (AGENTS.md regla 8) y escribe de forma atómica.
-import { readFileSync, renameSync, writeFileSync } from 'node:fs'
+// Las postulaciones, en la tabla `postulaciones` de otterjobs.db.
+// Todo cambio pasa por aquí: valida, registra el historial en `eventos` y reordena (regla 7 del método), en una transacción.
+import { ahora, transaccion, type Db } from './db.ts'
 
 export const ESTADOS = ['Oferta', 'Entrevista', 'Postulado', 'Por postular', 'Descartada', 'Rechazada'] as const
 export const ACTIVOS = new Set(['Oferta', 'Entrevista', 'Postulado'])
@@ -8,74 +8,34 @@ export const PROBS = ['Alta', 'Media-alta', 'Media', 'Media-baja', 'Baja', '—'
 export const CAMPOS = ['orden', 'prob', 'estado', 'empresa', 'cargo', 'url', 'sueldo', 'modalidad', 'publicada', 'proximo_paso', 'vence', 'ficha', 'notas'] as const
 
 export type Campo = (typeof CAMPOS)[number]
-export type Fila = Record<Campo, string>
+export type Fila = Record<Campo, string> & { id: number }
+export type Evento = { fecha: string; campo: string; antes: string; despues: string }
 
-const BOM = '﻿'
-
-export function parseCsv(texto: string, sep = ';'): string[][] {
-  const filas: string[][] = []
-  let fila: string[] = []
-  let campo = ''
-  let comillas = false
-  for (let i = 0; i < texto.length; i++) {
-    const c = texto[i]
-    if (comillas) {
-      if (c === '"' && texto[i + 1] === '"') (campo += '"'), i++
-      else if (c === '"') comillas = false
-      else campo += c
-    } else if (c === '"') comillas = true
-    else if (c === sep) fila.push(campo), (campo = '')
-    else if (c === '\n' || c === '\r') {
-      if (c === '\r' && texto[i + 1] === '\n') i++
-      fila.push(campo), filas.push(fila), (fila = []), (campo = '')
-    } else campo += c
-  }
-  if (campo || fila.length) fila.push(campo), filas.push(fila)
-  return filas
-}
-
-const celda = (v: string, sep: string) => (/["\n\r]/.test(v) || v.includes(sep) ? `"${v.replace(/"/g, '""')}"` : v)
-export const toCsv = (filas: string[][], sep = ';') => filas.map((f) => f.map((v) => celda(v, sep)).join(sep)).join('\n') + '\n'
-
-export function leer(ruta: string): Fila[] {
-  const [cab, ...resto] = parseCsv(readFileSync(ruta, 'utf8').replace(/^﻿/, ''))
-  return resto.map((r, n) => {
-    // Una fila con más columnas que la cabecera es un `;` sin escapar: se rechaza en vez de perder datos.
-    if (r.length > cab.length) throw new Error(`tracker.csv fila ${n + 2}: ${r.length} columnas (cabecera ${cab.length}). Hay un ; sin comillas.`)
-    const f = Object.fromEntries(CAMPOS.map((c) => [c, ''])) as Fila
-    cab.forEach((c, i) => {
-      if ((CAMPOS as readonly string[]).includes(c)) f[c as Campo] = r[i] ?? ''
-    })
-    return f
-  })
+export function leer(db: Db): Fila[] {
+  return db
+    .prepare('SELECT * FROM postulaciones ORDER BY orden, id')
+    .all()
+    .map((r) => ({ ...(r as unknown as Fila), orden: String(r.orden) }))
 }
 
 const rango = (lista: readonly string[], v: string) => (lista.includes(v) ? lista.indexOf(v) : lista.length)
 
-export function ordenar(filas: Fila[]): Fila[] {
+export function ordenar<T extends Pick<Fila, 'estado' | 'prob' | 'orden'>>(filas: T[]): T[] {
   // sort estable: dentro del mismo estado y probabilidad se respeta el orden anterior
   filas.sort((a, b) => rango(ESTADOS, a.estado) - rango(ESTADOS, b.estado) || rango(PROBS, a.prob) - rango(PROBS, b.prob))
   filas.forEach((f, i) => (f.orden = String(i + 1)))
   return filas
 }
 
-export function validar(f: Fila): void {
+export function validar(f: Record<Campo, string>): void {
   if (!(ESTADOS as readonly string[]).includes(f.estado)) throw new Error(`estado inválido: "${f.estado}". Usa: ${ESTADOS.join(', ')}`)
   if (f.prob && !(PROBS as readonly string[]).includes(f.prob)) throw new Error(`prob inválida: "${f.prob}". Usa: ${PROBS.join(', ')}`)
   if (f.vence && !/^\d{4}-\d{2}-\d{2}$/.test(f.vence)) throw new Error(`vence debe ser AAAA-MM-DD: "${f.vence}"`)
   if (!f.empresa || !f.cargo) throw new Error('empresa y cargo son obligatorios')
 }
 
-export function escribir(ruta: string, filas: Fila[]): void {
-  filas.forEach(validar)
-  ordenar(filas)
-  const tmp = `${ruta}.tmp`
-  writeFileSync(tmp, BOM + toCsv([[...CAMPOS], ...filas.map((f) => CAMPOS.map((c) => f[c]))]))
-  renameSync(tmp, ruta) // atómico: si algo falla, el CSV original queda intacto
-}
-
-export function limpiarCambios(cambios: Record<string, unknown>): Partial<Fila> {
-  const out: Partial<Fila> = {}
+export function limpiarCambios(cambios: Record<string, unknown>): Partial<Record<Campo, string>> {
+  const out: Partial<Record<Campo, string>> = {}
   for (const [k, v] of Object.entries(cambios)) {
     if (!(CAMPOS as readonly string[]).includes(k) || k === 'orden') throw new Error(`campo desconocido: ${k}`)
     if (typeof v !== 'string') throw new Error(`${k} debe ser texto`)
@@ -84,24 +44,61 @@ export function limpiarCambios(cambios: Record<string, unknown>): Partial<Fila> 
   return out
 }
 
-/** Cambia una fila por su orden. Devuelve la fila ya reordenada. */
-export function actualizar(ruta: string, orden: string, cambios: Record<string, unknown>): Fila {
-  const filas = leer(ruta)
-  const f = filas.find((x) => x.orden === orden)
-  if (!f) throw new Error(`no existe la fila ${orden}`)
-  Object.assign(f, limpiarCambios(cambios))
-  escribir(ruta, filas)
-  return f
+export function reordenar(db: Db): void {
+  const set = db.prepare('UPDATE postulaciones SET orden = ? WHERE id = ?')
+  for (const f of ordenar(leer(db))) set.run(Number(f.orden), f.id)
 }
 
-export function agregar(ruta: string, datos: Record<string, unknown>, hoy = isoHoy()): Fila {
-  const filas = leer(ruta)
-  const f = { ...(Object.fromEntries(CAMPOS.map((c) => [c, ''])) as Fila), estado: 'Por postular', publicada: hoy, ...limpiarCambios(datos) }
-  const dup = f.url && filas.find((x) => x.url === f.url)
-  if (dup) throw new Error(`ya existe con esa url: #${dup.orden} ${dup.empresa}`)
-  filas.push(f)
-  escribir(ruta, filas)
-  return f
+export const EDITABLES = CAMPOS.filter((c) => c !== 'orden')
+
+function registrar(db: Db, id: number, antes: Partial<Record<Campo, string>>, despues: Record<Campo, string>): void {
+  const ev = db.prepare('INSERT INTO eventos (postulacion_id, fecha, campo, antes, despues) VALUES (?, ?, ?, ?, ?)')
+  const t = ahora()
+  for (const c of EDITABLES) if ((antes[c] ?? '') !== despues[c]) ev.run(id, t, c, antes[c] ?? '', despues[c])
+}
+
+/** Inserta sin validar ni registrar historial: para `agregar` y para importar el CSV antiguo. */
+export function insertar(db: Db, f: Record<Campo, string>): number {
+  const orden = Number(f.orden) || 1e9 // sin orden queda al final hasta reordenar
+  const r = db.prepare(`INSERT INTO postulaciones (orden, ${EDITABLES.join(', ')}) VALUES (?, ${EDITABLES.map(() => '?').join(', ')})`).run(orden, ...EDITABLES.map((c) => f[c]))
+  return Number(r.lastInsertRowid)
+}
+
+/** Cambia una postulación por su orden. Devuelve la fila ya reordenada. */
+export function actualizar(db: Db, orden: string, cambios: Record<string, unknown>): Fila {
+  return transaccion(db, () => {
+    const f = leer(db).find((x) => x.orden === orden)
+    if (!f) throw new Error(`no existe la fila ${orden}`)
+    const nueva = { ...f, ...limpiarCambios(cambios) }
+    validar(nueva)
+    const cambiados = EDITABLES.filter((c) => nueva[c] !== f[c])
+    if (cambiados.length) {
+      // los nombres de columna salen de CAMPOS, nunca de la entrada
+      db.prepare(`UPDATE postulaciones SET ${cambiados.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`).run(...cambiados.map((c) => nueva[c]), f.id)
+      registrar(db, f.id, f, nueva)
+      reordenar(db)
+    }
+    return leer(db).find((x) => x.id === f.id)!
+  })
+}
+
+export function agregar(db: Db, datos: Record<string, unknown>, hoy = isoHoy()): Fila {
+  return transaccion(db, () => {
+    const f = { ...(Object.fromEntries(CAMPOS.map((c) => [c, ''])) as Record<Campo, string>), estado: 'Por postular', publicada: hoy, ...limpiarCambios(datos) }
+    validar(f)
+    const dup = f.url && leer(db).find((x) => x.url === f.url)
+    if (dup) throw new Error(`ya existe con esa url: #${dup.orden} ${dup.empresa}`)
+    const id = insertar(db, f)
+    registrar(db, id, {}, f)
+    reordenar(db)
+    return leer(db).find((x) => x.id === id)!
+  })
+}
+
+export function historial(db: Db, orden: string): Evento[] {
+  return db
+    .prepare('SELECT e.fecha, e.campo, e.antes, e.despues FROM eventos e JOIN postulaciones p ON p.id = e.postulacion_id WHERE p.orden = ? ORDER BY e.id')
+    .all(Number(orden)) as unknown as Evento[]
 }
 
 export const isoHoy = () => new Date().toLocaleDateString('sv-SE') // AAAA-MM-DD en hora local

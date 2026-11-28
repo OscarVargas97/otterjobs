@@ -8,12 +8,47 @@ const api = {
   elegirDatos: llamar('elegirDatos'),
   actualizar: llamar('actualizar'),
   agregar: llamar('agregar'),
-  tareaMd: llamar('tareaMd'),
-  nuevaTareaMd: llamar('nuevaTareaMd'),
+  marcarPendiente: llamar('marcarPendiente'),
+  nuevoPendiente: llamar('nuevoPendiente'),
+  historial: llamar('historial'),
   escanear: llamar('escanear'),
+  configurarGmail: llamar('configurarGmail'),
+  quitarGmail: llamar('quitarGmail'),
   revisado: llamar('revisado'),
   claude: llamar('claude'),
+  guardarEtapa: llamar('guardarEtapa'),
+  pdfCv: llamar('pdfCv'),
+  guardarPost: llamar('guardarPost'),
+  nuevoPost: llamar('nuevoPost'),
+  agregarIdea: llamar('agregarIdea'),
+  estadoIdea: llamar('estadoIdea'),
+  guardarVoz: llamar('guardarVoz'),
+  abrirArchivo: llamar('abrirArchivo'),
+  guardarArchivo: llamar('guardarArchivo'),
+  agregarFuentes: llamar('agregarFuentes'),
+  importarLinkedin: llamar('importarLinkedin'),
+  guardarNota: llamar('guardarNota'),
+  quitarFuente: llamar('quitarFuente'),
+  identidadesGit: llamar('identidadesGit'),
+  carpetaGit: llamar('carpetaGit'),
+  autoresGit: llamar('autoresGit'),
+  leerGitLocal: llamar('leerGitLocal'),
+  conectarGit: llamar('conectarGit'),
+  quitarGit: llamar('quitarGit'),
+  leerCuentasGit: llamar('leerCuentasGit'),
+  archivos: llamar('archivos'),
+  leerArchivo: llamar('leerArchivo'),
   abrir: (url: string) => ipcRenderer.send('abrir', url),
+  terminal: {
+    escribir: (id: number, d: string) => ipcRenderer.send('pty:escribir', id, d),
+    tamano: (id: number, cols: number, rows: number) => ipcRenderer.send('pty:tamano', id, cols, rows),
+    cerrar: (id: number) => ipcRenderer.send('pty:cerrar', id),
+    al: (canal: 'abierta' | 'datos' | 'fin', cb: (id: number, v: string | number) => void) => {
+      const h = (_e: unknown, id: number, v: string | number) => cb(id, v)
+      ipcRenderer.on(`pty:${canal}`, h)
+      return () => ipcRenderer.off(`pty:${canal}`, h)
+    }
+  },
   alCambiar: (cb: (estado: unknown) => void) => {
     const h = (_e: unknown, s: unknown) => cb(s)
     ipcRenderer.on('estado', h)

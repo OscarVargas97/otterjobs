@@ -1,0 +1,3 @@
+{
+  "claudeMdExcludes": ["**/otterjobs/CLAUDE.md", "**/otterjobs/AGENTS.md"]
+}
