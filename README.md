@@ -1,6 +1,6 @@
 # otterjobs
 
-Sistema para buscar trabajo con un perfil y una marca personal que se mantienen al día: tablero de postulaciones, tareas con vencimiento, bandeja de Gmail y un método, guiado por Claude Code, para armar tu perfil a partir de tu material y usarlo en cada postulación, entrevista y mensaje.
+Sistema para buscar trabajo con un perfil y una marca personal que se mantienen al día: tablero de postulaciones, tareas con vencimiento, bandeja de Gmail y tu perfil armado con formularios en la app (con Claude Code para refinarlo desde tu material) y usarlo en cada postulación, entrevista y mensaje.
 
 Hay dos partes que viven separadas:
 
@@ -56,8 +56,12 @@ git commit -m "inicio"
 ## 4. Armar tu perfil
 
 1. Deja en `datos/fuentes/` todo lo que tengas: CV antiguos, el PDF o la exportación de LinkedIn, certificados, cartas de recomendación, evaluaciones de desempeño, chats exportados (Discord, Slack, WhatsApp), notas sueltas.
-2. Revisa qué falta: `pnpm otterjobs perfil` (desde la carpeta de otterjobs).
-3. Abre Claude Code en tu carpeta de datos con el método de otterjobs (`cd datos` y `claude --plugin-dir ../metodo --settings ../metodo/settings.json`; el segundo deja fuera el `CLAUDE.md` de desarrollo de otterjobs) y escribe `/perfil` (o `/otterjobs:perfil` si otro plugin usa el mismo nombre). Los botones de la app lo abren así solos, en una terminal dentro de la misma app (vista «Claude», una pestaña por sesión). Trabaja una etapa por vez, te pregunta lo que falta y escribe en tus archivos solo lo que está respaldado:
+2. En la app, abre **Perfil**: las etapas con su estado y, en cada una, un formulario (empleos, logros con cifras, preferencias, el cuestionario de marca, respuestas a las señales de alerta). Al guardar, la app escribe los archivos de abajo y arma el CV (`cv/cv.html`, una columna, apto para ATS; «Exportar PDF» lo pasa a PDF con Edge o Chrome). «Guardar y marcar lista» cierra la etapa. Tus respuestas quedan en `perfil/perfil.json`.
+3. **Refinar con Claude** (opcional, en cada etapa): abre Claude Code con `/perfil <etapa>` en una terminal dentro de la app (vista «Claude»). Lee tus `fuentes/`, propone logros mejor redactados, cifras que falten, opciones para la marca o la investigación del mercado, y escribe en `perfil.json` solo lo que apruebes. Lo ves al tiro en el formulario. La etapa la sigues marcando tú.
+4. **Si ya tenías un perfil escrito** (a mano o con Claude), la app marca esas etapas como «Escrito fuera de la app». «Importar con Claude» (`/perfil importar`) lo lleva a los formularios sin perder contenido. Si guardas una etapa sin importarla, el archivo se reemplaza y el anterior queda como `.anterior.md`.
+
+Sin la app: `pnpm otterjobs perfil` dice qué falta, y Claude Code en tu carpeta de datos (`cd datos` y `claude --plugin-dir ../metodo --settings ../metodo/settings.json`; el segundo deja fuera el `CLAUDE.md` de desarrollo de otterjobs) hace lo mismo con `/perfil` (o `/otterjobs:perfil`). Edita `perfil.json` y corre `otterjobs perfil generar`.
+
 
 | Etapa | Archivo | Qué queda |
 |---|---|---|
@@ -70,7 +74,7 @@ git commit -m "inicio"
 | `perfiles` | `perfil/perfiles.md` | LinkedIn y los demás portales, listos para pegar |
 | `revision` | `perfil/criterios-revision.md` §5 | Primera evaluación del CV con puntaje |
 
-Cada plantilla marca lo pendiente con `<!-- pendiente:ETAPA -->`; la etapa queda lista cuando apruebas el contenido y la marca se quita. `/perfil marca` (o cualquier etapa) vuelve a una etapa puntual.
+Cada archivo marca lo pendiente con `<!-- pendiente:ETAPA -->`; la marca se quita cuando das la etapa por lista. Los archivos generados dicen «Generado por otterjobs»: se editan en la app, no a mano. Las secciones que escriben los comandos (§2 y §5 de criterios, «Correcciones» de preferencias) se conservan al guardar.
 
 ## 5. Buscar trabajo
 
@@ -89,7 +93,7 @@ Con la app (`pnpm dev`) o desde Claude Code en tu carpeta de datos, con el plugi
 
 Nada se envía ni se publica solo: los textos quedan en el portapapeles y tú los mandas. En la app, el panel de cada postulación tiene estos mismos botones.
 
-La CLI hace lo mismo que la app: `pnpm otterjobs ver`, `stats`, `tareas`, `historial N`, `set N campo=valor`, `add campo=valor`, `pendiente "texto"`, `hecha ID`, `perfil`, `pdf cv/cv.html`.
+La CLI hace lo mismo que la app: `pnpm otterjobs ver`, `stats`, `tareas`, `historial N`, `set N campo=valor`, `add campo=valor`, `pendiente "texto"`, `hecha ID`, `perfil` (`perfil generar` rehace los archivos desde `perfil.json`), `pdf cv/cv.html`.
 
 ## 6. Bandeja de Gmail (opcional)
 

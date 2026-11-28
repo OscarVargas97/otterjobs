@@ -4,6 +4,7 @@
 //   pnpm otterjobs pendiente "texto" | hecha ID
 //   pnpm otterjobs gmail [--dias 7] | gmail --pendientes | gmail --revisado
 //   pnpm otterjobs perfil [--json]   (etapas del perfil: qué está listo y qué sigue)
+//   pnpm otterjobs perfil campos | generar   (campos de cada etapa; rehace los archivos del perfil desde perfil/perfil.json)
 //   pnpm otterjobs pdf <archivo.html> [salida.pdf]   (CV a PDF con Edge o Chrome)
 //   pnpm otterjobs nuevo [carpeta] | datos <carpeta> | migrar
 import { join, resolve } from 'node:path'
@@ -12,12 +13,13 @@ import { usar } from './core/db.ts'
 import { escanear, leerInbox, marcarRevisado } from './core/gmail.ts'
 import { migrar } from './core/migrar.ts'
 import { aPdf } from './core/pdf.ts'
+import { FORMULARIO, regenerar } from './core/formulario.ts'
 import { estadoPerfil } from './core/perfil.ts'
 import { crearDatos } from './core/plantilla.ts'
 import { agregarPendiente, leerPendientes, marcarPendiente } from './core/pendientes.ts'
 import { actualizar, agregar, ESTADOS, historial, isoHoy, leer, tareas, type Fila } from './core/tracker.ts'
 
-const ayuda = `uso: otterjobs ver [--estado X] [--q texto] | stats | tareas | historial ORDEN | set ORDEN campo=valor ... | add campo=valor ... | pendiente "texto" | hecha ID | gmail [--dias N | --pendientes | --revisado] | perfil [--json] | pdf <html> [pdf] | nuevo [carpeta] | datos <carpeta> | migrar`
+const ayuda = `uso: otterjobs ver [--estado X] [--q texto] | stats | tareas | historial ORDEN | set ORDEN campo=valor ... | add campo=valor ... | pendiente "texto" | hecha ID | gmail [--dias N | --pendientes | --revisado] | perfil [--json | campos | generar] | pdf <html> [pdf] | nuevo [carpeta] | datos <carpeta> | migrar`
 const corto = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1) + '…').padEnd(n)
 const opcion = (a: string[], k: string) => (a.includes(k) ? a[a.indexOf(k) + 1] : undefined)
 
@@ -41,7 +43,7 @@ async function main(a: string[]) {
     crearDatos(destino, join(raiz, 'plantilla'))
     guardarCarpetaDatos(destino)
     const metodo = join(raiz, 'metodo').replace(/\\/g, '/')
-    return console.log(`Carpeta de datos creada en ${destino}. Deja tu material en fuentes/, abre ahí \`claude --plugin-dir ${metodo} --settings ${metodo}/settings.json\` y escribe /otterjobs:perfil.`)
+    return console.log(`Carpeta de datos creada en ${destino}. Deja tu material en fuentes/ y arma tu perfil en la app (Perfil), o abre ahí \`claude --plugin-dir ${metodo} --settings ${metodo}/settings.json\` y escribe /otterjobs:perfil.`)
   }
   if (cmd === 'pdf') {
     if (!resto[0]) throw new Error('uso: pdf <archivo.html> [salida.pdf]')
@@ -56,13 +58,15 @@ async function main(a: string[]) {
   const datos = carpetaDatos()
   if (!datos) throw new Error('Falta la carpeta de datos: otterjobs datos <carpeta>')
   const r = rutas(datos)
+  if (cmd === 'perfil' && resto[0] === 'campos') return console.log(JSON.stringify(FORMULARIO, null, 2))
+  if (cmd === 'perfil' && resto[0] === 'generar') return console.log(`Regenerado desde perfil/perfil.json: ${regenerar(datos).join(', ') || 'nada (perfil.json no tiene etapas)'}`)
   if (cmd === 'perfil') {
     const e = estadoPerfil(datos)
     if (resto.includes('--json')) return console.log(JSON.stringify(e, null, 2))
     console.log(`fuentes/: ${e.fuentes} archivos${e.fuentes ? '' : ' (deja ahí tu material antes de empezar)'}`)
     for (const x of e.etapas) console.log(`${x.listo ? '✓' : '·'} ${x.id.padEnd(13)} ${x.archivo.padEnd(30)} ${x.que}`)
     if (e.porConfirmar.length) console.log(`\nPor confirmar (perfil.md):\n${e.porConfirmar.map((p) => `  - ${p}`).join('\n')}`)
-    return console.log(e.siguiente ? `\nSigue: /perfil ${e.siguiente}` : '\nPerfil completo. Mantenlo con /revisar, /buscar y /semana.')
+    return console.log(e.siguiente ? `\nSigue: «${e.siguiente}», en la app (Perfil) o con /perfil ${e.siguiente}` : '\nPerfil completo. Mantenlo con /revisar, /buscar y /semana.')
   }
   if (cmd === 'gmail' && !resto.includes('--revisado') && !resto.includes('--pendientes')) {
     const cuentas = cuentasGmail()

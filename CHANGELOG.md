@@ -7,6 +7,7 @@ Lo que trae cada versión de otterjobs, lo más nuevo arriba.
 `feat/plantilla`, `feat/terminal`
 
 ### Nuevo
+- **Perfil en la app**: la vista Perfil arma cada etapa con formularios (empleos, logros, preferencias, cuestionario de marca, alertas, perfiles y registro de evaluaciones). Escribe los archivos del perfil, arma el CV de una columna y lo exporta a PDF. Sugiere las señales de alerta que se ven en tus fechas y revisa lo medible del CV (largo del resumen, logros con cifras, verbos repetidos). Claude queda para refinar cada etapa o importar un perfil ya escrito (`/perfil importar`), editando `perfil/perfil.json`. `otterjobs perfil generar` rehace los archivos.
 - **Claude dentro de la app**: los botones con Claude abren Claude Code en la vista «Claude», una pestaña por sesión, en vez de una ventana aparte de Windows Terminal.
 - **Conectar Gmail desde la app**: la Bandeja guía los tres pasos con los enlaces de Google, prueba la conexión antes de guardar y busca los correos del último mes. Ya no hay que crear el `.env` a mano. Acepta **varias cuentas**: las lee todas y cada correo se abre en la cuenta donde llegó.
 - **Hoy más legible**: los próximos pasos se agrupan en vencidas, hoy, próximas y sin fecha (plegada), con la fecha y la empresa en columnas; «Otras tareas» va al costado.
@@ -16,7 +17,7 @@ Lo que trae cada versión de otterjobs, lo más nuevo arriba.
 - **Comandos de búsqueda**: `/buscar` (ofertas abiertas por probabilidad), `/evaluar`, `/postular`, `/entrevista` (práctica con puntaje), `/mensaje` (al portapapeles) y `/revisar` (evaluación del CV con registro).
 - **Preferencias en los datos**: piso de renta, correo de envío y tono de los mensajes van en `perfil/preferencias.md`, no en la memoria del asistente.
 - `otterjobs pdf <html>`: el CV a PDF con Edge o Chrome.
-- En la app: «Mi perfil con Claude» y «Buscar ofertas»; los botones de cada postulación abren los comandos nuevos.
+- En la app: «Buscar ofertas»; los botones de cada postulación abren los comandos nuevos.
 - README con la instalación completa desde cero.
 - **El método como plugin**: las reglas y los comandos viven en `metodo/` (plugin de Claude Code) y la app lo abre con `--plugin-dir`. La carpeta de datos queda solo con datos, y tus reglas propias pasan a `perfil/preferencias.md`.
 - `otterjobs nuevo` sin carpeta crea `otterjobs/datos/` (ignorada por git, para versionarla en su propio repo privado).

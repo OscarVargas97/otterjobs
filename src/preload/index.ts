@@ -16,6 +16,9 @@ const api = {
   quitarGmail: llamar('quitarGmail'),
   revisado: llamar('revisado'),
   claude: llamar('claude'),
+  guardarEtapa: llamar('guardarEtapa'),
+  pdfCv: llamar('pdfCv'),
+  abrirArchivo: llamar('abrirArchivo'),
   abrir: (url: string) => ipcRenderer.send('abrir', url),
   terminal: {
     escribir: (id: number, d: string) => ipcRenderer.send('pty:escribir', id, d),

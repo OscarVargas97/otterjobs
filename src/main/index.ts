@@ -1,11 +1,14 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
-import { watch, type FSWatcher } from 'node:fs'
+import { existsSync, watch, type FSWatcher } from 'node:fs'
 import { join } from 'node:path'
 import { VelopackApp } from 'velopack'
 import { argsClaude, armarPedido, PEDIDOS, type Pedido } from '../core/claude.ts'
 import { carpetaDatos, cuentasGmail, guardarCarpetaDatos, guardarCuentaGmail, quitarCuentaGmail, rutas } from '../core/config.ts'
 import { enlaceGmail, escanear, leerInbox, marcarRevisado, probarGmail } from '../core/gmail.ts'
 import { usar, type Db } from '../core/db.ts'
+import { alertasSugeridas, etapasManuales, FORMULARIO, guardarEtapa, leerPerfilJson, registrarEvaluacion, revisarCv } from '../core/formulario.ts'
+import { aPdf } from '../core/pdf.ts'
+import { estadoPerfil, ETAPAS, type Etapa } from '../core/perfil.ts'
 import { agregarPendiente, leerPendientes, marcarPendiente } from '../core/pendientes.ts'
 import { actualizar, agregar, historial, isoHoy, leer, tareas } from '../core/tracker.ts'
 import { abrirTerminal, cerrarTerminales } from './terminal.ts'
@@ -28,7 +31,22 @@ function estado() {
     pendientes,
     inbox: leerInbox(r.inbox).map((c) => ({ ...c, enlace: enlaceGmail(c.id, c.cuenta) })),
     gmail: cuentasGmail().map((c) => c.user),
+    perfil: perfil(datos),
     version: app.getVersion()
+  }
+}
+
+function perfil(datos: string) {
+  const { etapas } = leerPerfilJson(datos)
+  const h = etapas.hechos ?? {}
+  return {
+    formulario: FORMULARIO,
+    valores: etapas,
+    manual: etapasManuales(datos),
+    estado: estadoPerfil(datos),
+    sugeridas: alertasSugeridas(h, isoHoy().slice(0, 7)),
+    checks: revisarCv(h, etapas.cv ?? {}),
+    pdf: existsSync(join(datos, 'cv', 'cv.pdf'))
   }
 }
 
@@ -49,6 +67,8 @@ function vigilar() {
   let t: NodeJS.Timeout | undefined
   const avisar = () => (clearTimeout(t), (t = setTimeout(enviar, 200)))
   vigia = [watch(r.datos, (_e, f) => f && /^otterjobs\.db$/.test(String(f)) && avisar())]
+  // perfil.json y los archivos del perfil cambian cuando Claude refina con /perfil
+  for (const d of ['perfil', 'cv']) if (existsSync(join(r.datos, d))) vigia.push(watch(join(r.datos, d), avisar))
 }
 
 const datosOk = () => {
@@ -109,10 +129,32 @@ manejar('revisado', (ids) => {
 manejar('claude', (pedido, orden) => {
   if (typeof pedido !== 'string' || !Object.hasOwn(PEDIDOS, pedido)) throw new Error('pedido inválido')
   const r = datosOk()
-  const fila = orden ? usar(r.db, leer).find((f) => f.orden === orden) : undefined
+  // /perfil recibe una etapa o «importar» en vez de una postulación
+  if (pedido === 'perfil' && orden !== undefined && orden !== 'importar' && !ETAPAS.some((e) => e.id === orden)) throw new Error('etapa inválida')
+  const fila = orden && pedido !== 'perfil' ? usar(r.db, leer).find((f) => f.orden === orden) : undefined
   const metodo = join(app.getAppPath(), 'metodo').replace('app.asar', 'app.asar.unpacked')
   const titulo = fila ? `${pedido} · ${fila.empresa}` : pedido
-  abrirTerminal(win!.webContents, r.datos, titulo, 'claude', argsClaude(metodo, armarPedido(pedido as Pedido, fila)))
+  const extra = pedido === 'perfil' && orden ? ` ${orden}` : ''
+  abrirTerminal(win!.webContents, r.datos, titulo + extra, 'claude', argsClaude(metodo, armarPedido(pedido as Pedido, fila) + extra))
+})
+manejar('guardarEtapa', (etapa, valores, lista) => {
+  if (typeof etapa !== 'string' || !Object.hasOwn(FORMULARIO, etapa)) throw new Error('etapa inválida')
+  const r = datosOk()
+  if (etapa === 'revision') registrarEvaluacion(r.datos, valores)
+  else guardarEtapa(r.datos, etapa as Etapa, valores, !!lista)
+})
+manejar('pdfCv', () => {
+  const r = datosOk()
+  if (!existsSync(join(r.datos, 'cv', 'cv.html'))) throw new Error('Primero guarda la etapa CV')
+  aPdf(join(r.datos, 'cv', 'cv.html'), join(r.datos, 'cv', 'cv.pdf'))
+})
+// Solo estas rutas de la carpeta de datos: la interfaz no abre archivos arbitrarios.
+const ARCHIVOS = { fuentes: 'fuentes', cv: 'cv/cv.html', pdf: 'cv/cv.pdf' } as const
+manejar('abrirArchivo', async (que) => {
+  if (typeof que !== 'string' || !Object.hasOwn(ARCHIVOS, que)) throw new Error('dato inválido')
+  const f = join(datosOk().datos, ARCHIVOS[que as keyof typeof ARCHIVOS])
+  const error = await shell.openPath(f)
+  if (error) throw new Error(error)
 })
 ipcMain.handle('historial', (_e, orden) => conDb((db) => historial(db, texto(orden, 5))))
 ipcMain.on('abrir', (_e, url) => {
