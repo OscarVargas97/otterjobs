@@ -89,7 +89,7 @@ Con la app (`pnpm dev`) o desde Claude Code en tu carpeta de datos, con el plugi
 | `/mensaje` | Redacta la respuesta y la deja en el portapapeles |
 | `/correo` | Lee la bandeja y actualiza el tracker |
 | `/revisar` | Evalúa el CV y registra lo aprendido |
-| `/semana` | Ideas y el post semanal de LinkedIn |
+| `/semana` | Ideas y el post semanal de LinkedIn (también desde la vista LinkedIn) |
 
 Nada se envía ni se publica solo: los textos quedan en el portapapeles y tú los mandas. En la app, el panel de cada postulación tiene estos mismos botones.
 

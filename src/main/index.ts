@@ -7,6 +7,7 @@ import { carpetaDatos, cuentasGmail, guardarCarpetaDatos, guardarCuentaGmail, qu
 import { enlaceGmail, escanear, leerInbox, marcarRevisado, probarGmail } from '../core/gmail.ts'
 import { usar, type Db } from '../core/db.ts'
 import { alertasSugeridas, etapasManuales, FORMULARIO, guardarEtapa, leerPerfilJson, registrarEvaluacion, revisarCv } from '../core/formulario.ts'
+import { agregarIdea, estadoIdea, guardarPost, leerIdeas, leerPosts, nuevoPost } from '../core/linkedin.ts'
 import { aPdf } from '../core/pdf.ts'
 import { estadoPerfil, ETAPAS, type Etapa } from '../core/perfil.ts'
 import { agregarPendiente, leerPendientes, marcarPendiente } from '../core/pendientes.ts'
@@ -32,6 +33,7 @@ function estado() {
     inbox: leerInbox(r.inbox).map((c) => ({ ...c, enlace: enlaceGmail(c.id, c.cuenta) })),
     gmail: cuentasGmail().map((c) => c.user),
     perfil: perfil(datos, filas),
+    linkedin: linkedin(datos),
     version: app.getVersion()
   }
 }
@@ -49,6 +51,15 @@ function perfil(datos: string, filas: Fila[]) {
     pdf: existsSync(join(datos, 'cv', 'cv.pdf')),
     cvs: cvs(datos, filas)
   }
+}
+
+function linkedin(datos: string) {
+  const posts = leerPosts(datos)
+  const ideas = leerIdeas(datos)
+  const marca = leerPerfilJson(datos).etapas.marca?.pilares
+  // los pilares de la marca, más los que ya se usaron en posts e ideas
+  const pilares = [...(typeof marca === 'string' ? marca.split(/\r?\n/).map((l) => l.replace(/^\s*[-*\d.]+\s*/, '').trim()) : []), ...posts.map((p) => p.pilar), ...ideas.map((i) => i.pilar)]
+  return { posts, ideas, pilares: [...new Set(pilares.filter(Boolean))], voz: existsSync(join(datos, 'linkedin', 'voz.md')) }
 }
 
 /** Todos los CV: los base de cv/ y los adaptados en la carpeta de cada postulación, con su PDF si lo hay. */
@@ -81,6 +92,8 @@ function vigilar() {
   vigia = [watch(r.datos, (_e, f) => f && /^otterjobs\.db$/.test(String(f)) && avisar())]
   // perfil.json y los archivos del perfil cambian cuando Claude refina con /perfil
   for (const d of ['perfil', 'cv']) if (existsSync(join(r.datos, d))) vigia.push(watch(join(r.datos, d), avisar))
+  // los posts y las ideas que escribe /semana
+  if (existsSync(join(r.datos, 'linkedin'))) vigia.push(watch(join(r.datos, 'linkedin'), { recursive: true }, avisar))
 }
 
 const datosOk = () => {
@@ -141,12 +154,13 @@ manejar('revisado', (ids) => {
 manejar('claude', (pedido, orden) => {
   if (typeof pedido !== 'string' || !Object.hasOwn(PEDIDOS, pedido)) throw new Error('pedido inválido')
   const r = datosOk()
-  // /perfil recibe una etapa o «importar» en vez de una postulación
+  // /perfil recibe una etapa o «importar», y /semana un post o una idea, en vez de una postulación
   if (pedido === 'perfil' && orden !== undefined && orden !== 'importar' && !ETAPAS.some((e) => e.id === orden)) throw new Error('etapa inválida')
-  const fila = orden && pedido !== 'perfil' ? usar(r.db, leer).find((f) => f.orden === orden) : undefined
+  const libre = pedido === 'perfil' || pedido === 'semana'
+  const fila = orden && !libre ? usar(r.db, leer).find((f) => f.orden === orden) : undefined
   const metodo = join(app.getAppPath(), 'metodo').replace('app.asar', 'app.asar.unpacked')
   const titulo = fila ? `${pedido} · ${fila.empresa}` : pedido
-  const extra = pedido === 'perfil' && orden ? ` ${orden}` : ''
+  const extra = libre && orden ? ` ${texto(orden, 600).replace(/[\r\n"%;]+/g, ' ')}` : ''
   abrirTerminal(win!.webContents, r.datos, titulo + extra, 'claude', argsClaude(metodo, armarPedido(pedido as Pedido, fila) + extra))
 })
 manejar('guardarEtapa', (etapa, valores, lista) => {
@@ -155,6 +169,10 @@ manejar('guardarEtapa', (etapa, valores, lista) => {
   if (etapa === 'revision') registrarEvaluacion(r.datos, valores)
   else guardarEtapa(r.datos, etapa as Etapa, valores, !!lista)
 })
+manejar('guardarPost', (slug, cambios) => guardarPost(datosOk().datos, slug, cambios))
+manejar('nuevoPost', (titulo, pilar) => void nuevoPost(datosOk().datos, titulo, isoHoy(), typeof pilar === 'string' ? pilar : ''))
+manejar('agregarIdea', (v) => agregarIdea(datosOk().datos, v, isoHoy()))
+manejar('estadoIdea', (i, estado) => estadoIdea(datosOk().datos, i, estado))
 manejar('pdfCv', () => {
   const r = datosOk()
   if (!existsSync(join(r.datos, 'cv', 'cv.html'))) throw new Error('Primero guarda la etapa CV')

@@ -13,7 +13,8 @@ export const PEDIDOS = {
   correo: '/otterjobs:correo',
   perfil: '/otterjobs:perfil',
   buscar: '/otterjobs:buscar',
-  revisar: '/otterjobs:revisar'
+  revisar: '/otterjobs:revisar',
+  semana: '/otterjobs:semana'
 } as const
 export type Pedido = keyof typeof PEDIDOS
 

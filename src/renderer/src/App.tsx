@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ArrowLeft, Bot, CalendarClock, Check, ChevronRight, ExternalLink, FileText, FolderOpen, Inbox, KanbanSquare, Mail, Plus, RefreshCw, SquareTerminal, UserRound, X } from 'lucide-react'
+import { ArrowLeft, Bot, CalendarClock, Check, ChevronRight, ExternalLink, FileText, FolderOpen, Inbox, KanbanSquare, Mail, Megaphone, Plus, RefreshCw, SquareTerminal, UserRound, X } from 'lucide-react'
 import type { Correo } from '../../core/gmail.ts'
 import type { Pendiente } from '../../core/pendientes.ts'
 import type { Evento, Fila, Tarea } from '../../core/tracker.ts'
@@ -25,10 +25,16 @@ type Estado = {
     pdf: boolean
     cvs: { ruta: string; titulo: string; archivo: string; pdfs: string[] }[]
   }
+  linkedin?: {
+    posts: { slug: string; estado: string; pilar: string; fecha: string; imagen: string; texto: string; archivos: string[] }[]
+    ideas: { fecha: string; idea: string; fuente: string; pilar: string; estado: string }[]
+    pilares: string[]
+    voz: boolean
+  }
   version?: string
 }
 type Api = {
-  [k in 'cargar' | 'elegirDatos' | 'actualizar' | 'agregar' | 'marcarPendiente' | 'nuevoPendiente' | 'escanear' | 'configurarGmail' | 'quitarGmail' | 'revisado' | 'claude' | 'guardarEtapa' | 'pdfCv' | 'abrirArchivo']: (...a: unknown[]) => Promise<Estado>
+  [k in 'cargar' | 'elegirDatos' | 'actualizar' | 'agregar' | 'marcarPendiente' | 'nuevoPendiente' | 'escanear' | 'configurarGmail' | 'quitarGmail' | 'revisado' | 'claude' | 'guardarEtapa' | 'pdfCv' | 'abrirArchivo' | 'guardarPost' | 'nuevoPost' | 'agregarIdea' | 'estadoIdea']: (...a: unknown[]) => Promise<Estado>
 } & { historial: (orden: string) => Promise<Evento[]>; archivos: (carpeta: string) => Promise<string[]>; leerArchivo: (ruta: string) => Promise<string | null>; abrir: (url: string) => void; alCambiar: (cb: (e: Estado) => void) => () => void }
 const api = (window as unknown as { api: Api }).api
 
@@ -40,7 +46,7 @@ const COLOR_PROB: Record<string, string> = { Alta: 'bg-ok/20 text-ok', 'Media-al
 
 export function App() {
   const [s, setS] = useState<Estado | null>(null)
-  const [vista, setVista] = useState<'hoy' | 'tablero' | 'bandeja' | 'perfil' | 'claude'>('hoy')
+  const [vista, setVista] = useState<'hoy' | 'tablero' | 'bandeja' | 'perfil' | 'linkedin' | 'claude'>('hoy')
   const [abierta, setAbierta] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [ocupado, setOcupado] = useState(false)
@@ -90,6 +96,7 @@ export function App() {
         <Nav activo={vista === 'bandeja' && !fila} onClick={() => ir('bandeja')} icono={<Inbox />} texto="Bandeja" n={pendientes || undefined} alerta />
         <Nav activo={vista === 'claude'} onClick={() => setVista('claude')} icono={<SquareTerminal />} texto="Claude" n={sesiones || undefined} />
         <Nav activo={vista === 'perfil' && !fila} onClick={() => ir('perfil')} icono={<UserRound />} texto="Perfil" n={s.perfil?.estado.etapas.filter((e) => !e.listo).length || undefined} />
+        <Nav activo={vista === 'linkedin' && !fila} onClick={() => ir('linkedin')} icono={<Megaphone />} texto="LinkedIn" n={s.linkedin?.posts.filter((p) => p.estado === 'aprobado').length || undefined} />
         <div className="mt-auto space-y-1 px-2 text-2xs text-muted-foreground">
           <div className="truncate" title={s.datos}>{s.datos}</div>
           <div>v{s.version}</div>
@@ -111,6 +118,7 @@ export function App() {
             {vista === 'tablero' && <Tablero filas={filas} abrir={setAbierta} hacer={hacer} />}
             {vista === 'bandeja' && <Bandeja s={s} abrir={setAbierta} hacer={hacer} ocupado={ocupado} />}
             {vista === 'perfil' && s.perfil && <Perfil s={s} hacer={hacer} ocupado={ocupado} />}
+            {vista === 'linkedin' && s.linkedin && <Linkedin li={s.linkedin} hacer={hacer} ocupado={ocupado} />}
           </>
         )}
       </main>
@@ -730,6 +738,177 @@ function MisCv({ cvs, hacer }: { cvs: NonNullable<Estado['perfil']>['cvs']; hace
         </div>
         <Visor key={cv.ruta} ruta={cv.ruta} alto="h-[80vh]" />
       </div>
+    </div>
+  )
+}
+
+type Li = NonNullable<Estado['linkedin']>
+type PostLi = Li['posts'][number]
+const ESTADOS_POST = ['borrador', 'aprobado', 'publicado'] as const
+const ESTADOS_IDEA = ['sin usar', 'en borrador', 'aprobado', 'publicado', 'descartada'] as const
+const COLOR_POST: Record<string, string> = { borrador: 'text-muted-foreground', aprobado: 'text-primary', publicado: 'text-ok' }
+const dias = (desde: string) => Math.round((Date.now() - new Date(`${desde}T12:00:00`).getTime()) / 864e5)
+
+/** Posts, banco de ideas y voz. Claude escribe y mejora (/semana); aquí se revisa, se aprueba y se copia para publicar a mano. */
+function Linkedin({ li, hacer, ocupado }: { li: Li; hacer: Hacer; ocupado: boolean }) {
+  const [pestana, setPestana] = useState<'posts' | 'ideas' | 'voz'>('posts')
+  const ultimo = li.posts.filter((p) => p.estado === 'publicado').map((p) => p.fecha).sort().pop()
+  const semana = () => hacer(() => api.claude('semana'))
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <Titulo>LinkedIn</Titulo>
+        <span className="text-xs text-muted-foreground">
+          {li.posts.filter((p) => p.estado === 'publicado').length} publicados · {li.posts.filter((p) => p.estado !== 'publicado').length} por publicar · {li.ideas.filter((i) => i.estado === 'sin usar').length} ideas sin usar
+          {ultimo && <> · último publicado hace {dias(ultimo)} días{dias(ultimo) > 7 && <span className="text-destructive"> (toca uno esta semana)</span>}</>}
+        </span>
+        <div className="ml-auto flex rounded-md border border-border p-0.5 text-xs">
+          {(['posts', 'ideas', 'voz'] as const).map((x) => (
+            <button key={x} onClick={() => setPestana(x)} className={`rounded px-2 py-0.5 capitalize ${pestana === x ? 'bg-accent text-foreground' : 'text-muted-foreground'}`}>{x}</button>
+          ))}
+        </div>
+        <Boton tam="xs" onClick={semana}><Bot /> Post de la semana con Claude</Boton>
+      </div>
+      {pestana === 'posts' && <Posts li={li} hacer={hacer} ocupado={ocupado} />}
+      {pestana === 'ideas' && <Ideas li={li} hacer={hacer} ocupado={ocupado} />}
+      {pestana === 'voz' &&
+        (li.voz ? (
+          <div className="max-w-3xl space-y-2">
+            <p className="text-xs text-muted-foreground">Cómo escribes. Claude la lee antes de cada borrador y anota aquí lo que le corriges.</p>
+            <Visor key={JSON.stringify(li.posts.length)} ruta="linkedin/voz.md" alto="h-[65vh]" />
+            <Boton tam="xs" variante="outline" onClick={() => hacer(() => api.abrirArchivo('linkedin/voz.md'))}><ExternalLink /> Editar el archivo</Boton>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Todavía no hay linkedin/voz.md. Claude lo arma en la primera sesión de /semana con textos que hayas escrito tú.</p>
+        ))}
+    </div>
+  )
+}
+
+function Posts({ li, hacer, ocupado }: { li: Li; hacer: Hacer; ocupado: boolean }) {
+  const [sel, setSel] = useState<string | undefined>(li.posts[0]?.slug)
+  const [titulo, setTitulo] = useState('')
+  const p = li.posts.find((x) => x.slug === sel) ?? li.posts[0]
+  const crear = () => titulo.trim() && hacer(async () => {
+    const r = await api.nuevoPost(titulo)
+    setTitulo('')
+    setSel(undefined)
+    return r
+  })
+  return (
+    <div className="flex gap-4">
+      <div className="w-64 shrink-0 space-y-2">
+        <div className="flex gap-1">
+          <input className="campo" placeholder="Post nuevo: de qué trata" value={titulo} onChange={(e) => setTitulo(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && crear()} />
+          <Boton tam="xs" variante="outline" disabled={!titulo.trim() || ocupado} onClick={crear}><Plus /></Boton>
+        </div>
+        <div className="space-y-0.5">
+          {li.posts.map((x) => (
+            <button key={x.slug} onClick={() => setSel(x.slug)} className={`block w-full rounded-md px-2 py-1.5 text-left text-sm ${x.slug === p?.slug ? 'bg-accent' : 'hover:bg-accent/60'}`}>
+              <span className="block truncate">{x.texto.split('\n')[0] || x.slug.slice(11)}</span>
+              <span className="block text-2xs text-muted-foreground">{x.fecha} · <span className={COLOR_POST[x.estado]}>{x.estado}</span>{x.pilar && ` · ${x.pilar}`}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      {p ? <EditorPost key={p.slug + p.texto + p.estado + p.pilar + p.fecha} p={p} pilares={li.pilares} hacer={hacer} ocupado={ocupado} /> : <p className="text-sm text-muted-foreground">Todavía no hay posts. Crea uno o pídele el de la semana a Claude.</p>}
+    </div>
+  )
+}
+
+function EditorPost({ p, pilares, hacer, ocupado }: { p: PostLi; pilares: string[]; hacer: Hacer; ocupado: boolean }) {
+  const [texto, setTexto] = useState(p.texto)
+  const [copiado, setCopiado] = useState(false)
+  const cambio = texto !== p.texto
+  const guardar = (c: Record<string, string>) => hacer(() => api.guardarPost(p.slug, c))
+  // LinkedIn corta el post en «…ver más» cerca de los 210 caracteres o la tercera línea: ahí tiene que estar el gancho.
+  const corte = Math.min(210, texto.split('\n').slice(0, 3).join('\n').length)
+  const copiar = async () => (await navigator.clipboard.writeText(texto), setCopiado(true), setTimeout(() => setCopiado(false), 1500))
+  return (
+    <div className="min-w-0 max-w-3xl flex-1 space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex rounded-md border border-border p-0.5 text-xs">
+          {ESTADOS_POST.map((x) => (
+            <button key={x} disabled={ocupado} onClick={() => x !== p.estado && guardar({ estado: x })} className={`rounded px-2 py-0.5 ${p.estado === x ? `bg-accent ${COLOR_POST[x]}` : 'text-muted-foreground'}`}>{x}</button>
+          ))}
+        </div>
+        <select className="campo w-auto" value={p.pilar} onChange={(e) => guardar({ pilar: e.target.value })}>
+          <option value="">Sin pilar</option>
+          {[...new Set([...pilares, p.pilar].filter(Boolean))].map((x) => <option key={x}>{x}</option>)}
+        </select>
+        <input type="date" className="campo w-auto" value={/^\d{4}-\d{2}-\d{2}$/.test(p.fecha) ? p.fecha : ''} onChange={(e) => guardar({ fecha: e.target.value })} />
+        <Boton tam="xs" variante="outline" className="ml-auto" onClick={() => hacer(() => api.claude('semana', `post ${p.slug}`))}><Bot /> Mejorar con Claude</Boton>
+      </div>
+      <textarea className="campo min-h-[45vh] font-[inherit] leading-relaxed" value={texto} onChange={(e) => setTexto(e.target.value)} />
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <span className={texto.length > 3000 ? 'text-destructive' : ''}>{texto.length} / 3000</span>
+        <span>· antes de «ver más»: «{texto.slice(0, corte).replace(/\n+/g, ' ')}»</span>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Boton disabled={!cambio || ocupado} onClick={() => guardar({ texto })}>Guardar</Boton>
+        <Boton variante="outline" disabled={!texto.trim()} onClick={() => void copiar()}>{copiado ? <Check /> : null} {copiado ? 'Copiado' : 'Copiar texto'}</Boton>
+        <Boton variante="outline" onClick={() => api.abrir('https://www.linkedin.com/feed/?shareActive=true')}><ExternalLink /> Abrir LinkedIn</Boton>
+        {p.estado === 'aprobado' && <Boton variante="ghost" onClick={() => guardar({ estado: 'publicado' })}><Check /> Ya lo publiqué</Boton>}
+      </div>
+      {(p.archivos.length > 0 || (p.imagen && p.imagen !== 'ninguna')) && (
+        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+          <span>Imagen: {p.imagen || '—'}</span>
+          {p.archivos.map((f) => (
+            <Boton key={f} tam="xs" variante="ghost" onClick={() => hacer(() => api.abrirArchivo(`linkedin/posts/${p.slug}/${f}`))}><ExternalLink /> {f}</Boton>
+          ))}
+          <Boton tam="xs" variante="ghost" onClick={() => hacer(() => api.abrirArchivo(`linkedin/posts/${p.slug}`))}><FolderOpen /> Carpeta</Boton>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Ideas({ li, hacer, ocupado }: { li: Li; hacer: Hacer; ocupado: boolean }) {
+  const [v, setV] = useState({ idea: '', fuente: '', pilar: '' })
+  const set = (k: keyof typeof v) => (e: { target: { value: string } }) => setV({ ...v, [k]: e.target.value })
+  const agregar = () => v.idea.trim() && hacer(async () => {
+    const r = await api.agregarIdea(v)
+    setV({ idea: '', fuente: '', pilar: '' })
+    return r
+  })
+  return (
+    <div className="max-w-5xl space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <input className="campo flex-[3]" placeholder="Idea: qué te pasó o qué opinas" value={v.idea} onChange={set('idea')} onKeyDown={(e) => e.key === 'Enter' && agregar()} />
+        <input className="campo flex-[2]" placeholder="Fuente (experiencia propia, una noticia…)" value={v.fuente} onChange={set('fuente')} />
+        <select className="campo flex-1" value={v.pilar} onChange={set('pilar')}>
+          <option value="">Pilar</option>
+          {li.pilares.map((x) => <option key={x}>{x}</option>)}
+        </select>
+        <Boton variante="outline" disabled={!v.idea.trim() || ocupado} onClick={agregar}><Plus /> Agregar</Boton>
+      </div>
+      {li.ideas.length ? (
+        <table className="w-full text-sm">
+          <thead className="text-left text-xs text-muted-foreground">
+            <tr><th className="p-1.5">Fecha</th><th className="p-1.5">Idea</th><th className="p-1.5">Fuente</th><th className="p-1.5">Pilar</th><th className="p-1.5">Estado</th><th /></tr>
+          </thead>
+          <tbody>
+            {li.ideas.map((x, i) => (
+              <tr key={i} className={`border-t border-border align-top ${x.estado === 'descartada' ? 'opacity-50' : ''}`}>
+                <td className="whitespace-nowrap p-1.5 text-xs text-muted-foreground">{x.fecha}</td>
+                <td className="p-1.5">{x.idea}</td>
+                <td className="p-1.5 text-xs text-muted-foreground">{x.fuente}</td>
+                <td className="p-1.5 text-xs">{x.pilar}</td>
+                <td className="p-1.5">
+                  <select className="campo w-auto py-0.5 text-xs" value={x.estado} onChange={(e) => hacer(() => api.estadoIdea(i, e.target.value))}>
+                    {[...new Set([x.estado, ...ESTADOS_IDEA])].map((s) => <option key={s}>{s}</option>)}
+                  </select>
+                </td>
+                <td className="p-1.5">
+                  {x.estado === 'sin usar' && <Boton tam="xs" variante="outline" onClick={() => hacer(() => api.claude('semana', x.idea))}><Bot /> Escribir</Boton>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="text-sm text-muted-foreground">El banco está vacío. Anota lo que te pase en la semana, o deja que Claude busque temas en /semana.</p>
+      )}
     </div>
   )
 }
