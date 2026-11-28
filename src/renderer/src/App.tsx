@@ -154,6 +154,7 @@ export function App() {
             <button onClick={() => setError('')}><X className="size-4" /></button>
           </div>
         )}
+        <div className={vista === 'tablero' && !fila ? '' : 'mx-auto max-w-6xl'}>
         {fila ? (
           <Detalle key={fila.empresa + fila.cargo} fila={fila} cerrar={() => setAbierta(null)} hacer={hacer} />
         ) : (
@@ -169,6 +170,7 @@ export function App() {
             {vista === 'linkedin' && s.linkedin && <Linkedin li={s.linkedin} hacer={hacer} ocupado={ocupado} />}
           </>
         )}
+        </div>
       </main>
       {/* Claude flota abajo a la derecha, como un chat: se abre solo cuando un botón inicia una sesión */}
       <div className={`fixed bottom-20 right-5 z-40 flex h-[min(80vh,760px)] w-[min(1000px,calc(100vw-15rem))] flex-col overflow-hidden rounded-xl border border-border bg-[#141414] shadow-2xl ${chat ? '' : 'hidden'}`}>
@@ -338,7 +340,7 @@ function Bandeja({ s, abrir, hacer, ocupado }: { s: Estado; abrir: (o: string) =
   const pendientes = (s.inbox ?? []).filter((c) => !c.revisado).length
   if (!cuentas.length || agregar) return <ConectarGmail cuentas={cuentas} hacer={hacer} ocupado={ocupado} listo={() => setAgregar(false)} />
   return (
-    <div className="max-w-4xl space-y-3">
+    <div className="mx-auto max-w-4xl space-y-3">
       <div className="flex items-center gap-2">
         <Titulo>Bandeja de Gmail</Titulo>
         <div className="flex-1" />
@@ -479,7 +481,7 @@ function ConectarGmail({ cuentas, hacer, ocupado, listo }: { cuentas: string[]; 
   const [pass, setPass] = useState('')
   const limpia = pass.replace(/\s/g, '')
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="mx-auto max-w-2xl space-y-4">
       <div>
         <Titulo>{cuentas.length ? 'Agregar otra cuenta de Gmail' : 'Conectar Gmail'}</Titulo>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -591,7 +593,7 @@ function Perfil({ s, hacer, ocupado, ir }: { s: Estado; hacer: Hacer; ocupado: b
   const vacio = !Object.values(p.valores[etapa] ?? {}).some((v) => (Array.isArray(v) ? v.length : String(v).trim()))
   const conClaude = () => hacer(() => api.claude('perfil', etapa))
   return (
-    <div>
+    <div className="mx-auto max-w-5xl">
     <Pasos p={p} etapa={etapa} setEtapa={(x) => (setEtapa(x), setVer(false))} hacer={hacer} ir={ir} />
     <div className="flex gap-5">
       <div className="w-48 shrink-0 space-y-3">
@@ -977,7 +979,7 @@ function EditorPost({ p, pilares, hacer, ocupado }: { p: PostLi; pilares: string
             <button key={x} disabled={ocupado} onClick={() => x !== p.estado && guardar({ estado: x })} className={`rounded px-2 py-0.5 ${p.estado === x ? `bg-accent ${COLOR_POST[x]}` : 'text-muted-foreground'}`}>{x}</button>
           ))}
         </div>
-        <select className="campo w-auto" value={p.pilar} onChange={(e) => guardar({ pilar: e.target.value })}>
+        <select className="campo w-auto max-w-full" value={p.pilar} onChange={(e) => guardar({ pilar: e.target.value })}>
           <option value="">Sin pilar</option>
           {[...new Set([...pilares, p.pilar].filter(Boolean))].map((x) => <option key={x}>{x}</option>)}
         </select>
@@ -1029,7 +1031,7 @@ function Ideas({ li, hacer, ocupado }: { li: Li; hacer: Hacer; ocupado: boolean 
     })
   }
   return (
-    <div className="max-w-5xl space-y-3">
+    <div className="mx-auto max-w-5xl space-y-3">
       <div className="flex flex-wrap gap-2">
         <input ref={idea} className={`campo flex-[3] ${falta && !v.idea.trim() ? 'border-destructive' : ''}`} placeholder="Idea: qué te pasó o qué opinas" value={v.idea} onChange={set('idea')} onKeyDown={(e) => e.key === 'Enter' && agregar()} />
         <input className="campo flex-[2]" placeholder="Fuente (experiencia propia, una noticia…)" value={v.fuente} onChange={set('fuente')} />
@@ -1075,7 +1077,7 @@ function Voz({ li, hacer, ocupado }: { li: Li; hacer: Hacer; ocupado: boolean })
   const [v, setV] = useState(li.voz)
   const cambio = li.camposVoz.some((c) => (v[c.id] ?? '') !== (li.voz[c.id] ?? ''))
   return (
-    <div className="max-w-3xl space-y-4">
+    <div className="mx-auto max-w-3xl space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <p className="flex-1 text-sm text-muted-foreground">Tu forma de escribir, para que los posts suenen a ti. Claude la lee antes de cada borrador y anota lo que le corriges.</p>
         <Boton tam="xs" onClick={() => hacer(() => api.claude('semana', 'voz'))}><Bot /> {Object.values(li.voz).some(Boolean) ? 'Afinar mi voz con Claude' : 'Armar mi voz con Claude'}</Boton>
@@ -1128,7 +1130,7 @@ function Guia({ s, hacer, ir }: { s: Estado; hacer: Hacer; ir: Ir }) {
   const sigue = pasos.find((x) => !x.ok && !x.opcional) ?? pasos.find((x) => !x.ok)
   const grupos = [...new Set(pasos.map((x) => x.grupo))]
   return (
-    <div className="max-w-3xl space-y-5">
+    <div className="mx-auto max-w-3xl space-y-5">
       <div className="space-y-2">
         <Titulo>Guía: de cero a postular</Titulo>
         <p className="text-sm text-muted-foreground">
@@ -1208,7 +1210,7 @@ function Fuentes({ s, hacer, ocupado, ir }: { s: Estado; hacer: Hacer; ocupado: 
   ]
   const x = lista.find((l) => l.id === sel)!
   return (
-    <div className="flex gap-5">
+    <div className="mx-auto flex max-w-5xl gap-5">
       <div className="w-60 shrink-0 space-y-3">
         <Titulo>Fuentes</Titulo>
         <p className="text-xs text-muted-foreground">De aquí sale tu perfil.</p>
