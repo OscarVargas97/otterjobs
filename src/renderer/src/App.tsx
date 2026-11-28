@@ -547,6 +547,7 @@ function Boton({ variante = 'default', tam = 'sm', className = '', ...p }: React
 
 type Fila_ = Record<string, string>
 const NOMBRE: Record<Etapa, string> = { hechos: 'Hechos', preferencias: 'Preferencias', mercado: 'Mercado', marca: 'Marca', alertas: 'Alertas', cv: 'CV', perfiles: 'Perfiles', revision: 'Revisión' }
+const mes = (x = '') => (/^\d{4}-\d{2}$/.test(x) ? `${'ene feb mar abr may jun jul ago sep oct nov dic'.split(' ')[Number(x.slice(5)) - 1]} ${x.slice(0, 4)}` : x)
 const vacia = (c: CampoForm) => Object.fromEntries((c.campos ?? []).map((x) => [x.k, ''])) as Fila_
 
 /** El orden para armar el perfil: primero el material, después lo que Claude saca de él, y al final las etapas que dependen de las anteriores. */
@@ -561,6 +562,7 @@ function Pasos({ p, etapa, setEtapa, hacer, ir }: { p: NonNullable<Estado['perfi
     { t: 'Revisión', d: listo('revision') ? 'Evaluado' : 'Evalúa el CV', ok: listo('revision'), ir: () => setEtapa('revision') }
   ]
   const sigue = pasos.findIndex((x) => !x.ok)
+  if (sigue < 0) return null
   const actual = etapa === 'revision' ? 4 : etapa === 'cv' || etapa === 'perfiles' ? 3 : 2
   return (
     <ol className="mb-5 flex gap-2">
@@ -592,7 +594,7 @@ function Perfil({ s, hacer, ocupado, ir }: { s: Estado; hacer: Hacer; ocupado: b
     <div>
     <Pasos p={p} etapa={etapa} setEtapa={(x) => (setEtapa(x), setVer(false))} hacer={hacer} ir={ir} />
     <div className="flex gap-5">
-      <div className="w-60 shrink-0 space-y-3">
+      <div className="w-48 shrink-0 space-y-3">
         <Titulo>Tu perfil</Titulo>
         <p className="text-xs text-muted-foreground">
           {p.estado.fuentes} archivos en fuentes/ ·{' '}
@@ -604,7 +606,7 @@ function Perfil({ s, hacer, ocupado, ir }: { s: Estado; hacer: Hacer; ocupado: b
               <span className={`w-4 ${x.listo ? 'text-ok' : 'text-muted-foreground'}`}>{x.listo ? <Check className="size-4" /> : '·'}</span>
               <span className="flex-1">
                 <span className="block">{NOMBRE[x.id]}</span>
-                <span className="block text-2xs text-muted-foreground">{p.manual.includes(x.id) ? 'Escrito fuera de la app' : x.que}</span>
+                {p.manual.includes(x.id) && <span className="block text-2xs text-destructive">Escrito fuera de la app</span>}
               </span>
             </button>
           ))}
@@ -621,7 +623,7 @@ function Perfil({ s, hacer, ocupado, ir }: { s: Estado; hacer: Hacer; ocupado: b
         <div className="flex items-start gap-3">
           <div className="flex-1">
             <h2 className="text-base font-semibold">{NOMBRE[etapa]}</h2>
-            <p className="text-xs text-muted-foreground">{e.archivo} · {p.formulario[etapa].intro}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{p.formulario[etapa].intro}</p>
           </div>
           <div className="flex rounded-md border border-border p-0.5 text-xs">
             {(['Formulario', 'Ver archivo'] as const).map((x, i) => (
@@ -663,7 +665,7 @@ function Formulario({ etapa, p, listo, hacer, ocupado }: { etapa: Etapa; p: NonN
   const guardar = (lista: boolean) => hacer(() => api.guardarEtapa(etapa, v, lista))
   const alertas = (v.alertas as Fila_[] | undefined) ?? []
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {etapa === 'alertas' && p.sugeridas.length > 0 && (
         <div className="space-y-1 rounded-md border border-border p-2 text-xs">
           <p className="text-muted-foreground">Señales que se ven en tus fechas:</p>
@@ -691,8 +693,10 @@ function Formulario({ etapa, p, listo, hacer, ocupado }: { etapa: Etapa; p: NonN
           </div>
         </div>
       )}
-      {f.campos.map((c) => <CampoPerfil key={c.k} c={c} v={v[c.k]} set={(x) => setV({ ...v, [c.k]: x })} />)}
-      <div className="sticky bottom-0 flex justify-end gap-2 border-t border-border bg-background py-2">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-5">
+        {f.campos.map((c) => <div key={c.k} className={c.tipo === 'area' || c.tipo === 'lista' ? 'col-span-2' : ''}><CampoPerfil c={c} v={v[c.k]} set={(x) => setV({ ...v, [c.k]: x })} /></div>)}
+      </div>
+      <div className="sticky bottom-0 z-10 flex justify-end gap-2 border-t border-border bg-background/95 py-2 backdrop-blur">
         {etapa === 'revision' ? (
           <Boton disabled={ocupado} onClick={() => guardar(true)}>Registrar evaluación</Boton>
         ) : (
@@ -706,35 +710,59 @@ function Formulario({ etapa, p, listo, hacer, ocupado }: { etapa: Etapa; p: NonN
   )
 }
 
-function CampoPerfil({ c, v, set }: { c: CampoForm; v: Valores[string] | undefined; set: (v: string | Fila_[]) => void }) {
-  if (c.tipo === 'lista') {
-    const xs = Array.isArray(v) ? v : []
-    const cambiar = (i: number, k: string, x: string) => set(xs.map((f, j) => (j === i ? { ...f, [k]: x } : f)))
-    return (
-      <div className="space-y-2">
-        <div>
-          <span className="text-sm font-medium">{c.t}</span>
-          {c.ayuda && <span className="ml-2 text-2xs text-muted-foreground">{c.ayuda}</span>}
-        </div>
+/** Una lista del perfil (empleos, historias, alertas…): cada fila se ve en una línea y se abre para editarla. */
+function ListaPerfil({ c, v, set }: { c: CampoForm; v: Valores[string] | undefined; set: (v: Fila_[]) => void }) {
+  const xs = Array.isArray(v) ? v : []
+  const [abierta, setAbierta] = useState<number | null>(null)
+  const cambiar = (i: number, k: string, x: string) => set(xs.map((f, j) => (j === i ? { ...f, [k]: x } : f)))
+  const cortos = c.campos!.filter((x) => x.tipo !== 'area')
+  const titulo = (f: Fila_) => {
+    const t = cortos.map((x) => (x.tipo === 'mes' ? '' : f[x.k]?.trim())).filter(Boolean).slice(0, 2).join(' · ') || c.campos!.map((x) => f[x.k]?.trim()).find(Boolean)?.slice(0, 90) || 'Sin completar'
+    const meses = cortos.filter((x) => x.tipo === 'mes').map((x) => f[x.k])
+    return meses[0] ? `${t} · ${mes(meses[0])} – ${meses[1] ? mes(meses[1]) : 'actual'}` : t
+  }
+  return (
+    <div className="space-y-2">
+      <div>
+        <span className="text-sm font-medium">{c.t}</span>
+        <span className="ml-2 text-2xs text-muted-foreground">{xs.length}</span>
+        {c.ayuda && <p className="text-2xs text-muted-foreground">{c.ayuda}</p>}
+      </div>
+      <div className="divide-y divide-border rounded-md border border-border">
         {xs.map((f, i) => (
-          <div key={i} className="relative grid grid-cols-2 gap-2 rounded-md border border-border p-2 pr-8">
-            <button title="Quitar" className="absolute top-2 right-2 text-muted-foreground hover:text-foreground" onClick={() => set(xs.filter((_, j) => j !== i))}><X className="size-4" /></button>
-            {c.campos!.map((sub) => (
-              <div key={sub.k} className={sub.tipo === 'area' ? 'col-span-2' : ''}>
-                <CampoPerfil c={sub} v={f[sub.k]} set={(x) => cambiar(i, sub.k, x as string)} />
+          <div key={i}>
+            <div className="flex items-center gap-2 px-3 py-2">
+              <button className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm" onClick={() => setAbierta(abierta === i ? null : i)}>
+                <ChevronRight className={`size-4 shrink-0 text-muted-foreground transition-transform ${abierta === i ? 'rotate-90' : ''}`} />
+                <span className="truncate">{titulo(f)}</span>
+              </button>
+              <button title="Quitar" className="text-muted-foreground hover:text-destructive" onClick={() => (set(xs.filter((_, j) => j !== i)), setAbierta(null))}><X className="size-4" /></button>
+            </div>
+            {abierta === i && (
+              <div className="grid grid-cols-2 gap-3 border-t border-border bg-background/40 p-3">
+                {c.campos!.map((sub) => (
+                  <div key={sub.k} className={sub.tipo === 'area' ? 'col-span-2' : ''}>
+                    <CampoPerfil c={sub} v={f[sub.k]} set={(x) => cambiar(i, sub.k, x as string)} />
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         ))}
-        <Boton tam="xs" variante="outline" onClick={() => set([...xs, vacia(c)])}><Plus /> Agregar</Boton>
+        {!xs.length && <p className="px-3 py-2 text-xs text-muted-foreground">Vacío.</p>}
       </div>
-    )
-  }
+      <Boton tam="xs" variante="outline" onClick={() => (set([...xs, vacia(c)]), setAbierta(xs.length))}><Plus /> Agregar</Boton>
+    </div>
+  )
+}
+
+function CampoPerfil({ c, v, set }: { c: CampoForm; v: Valores[string] | undefined; set: (v: string | Fila_[]) => void }) {
+  if (c.tipo === 'lista') return <ListaPerfil c={c} v={v} set={set} />
   const x = typeof v === 'string' ? v : ''
   return (
     <Campo t={c.t}>
       {c.tipo === 'area' ? (
-        <textarea rows={Math.min(12, Math.max(3, x.split('\n').length + 1))} value={x} placeholder={c.ayuda} onChange={(e) => set(e.target.value)} className="campo h-auto py-1.5" />
+        <textarea value={x} placeholder={c.ayuda} onChange={(e) => set(e.target.value)} className="campo h-auto max-h-96 min-h-16 py-1.5 [field-sizing:content]" />
       ) : (
         <input type={c.tipo === 'mes' ? 'month' : 'text'} value={x} placeholder={c.tipo === 'mes' ? undefined : c.ayuda} onChange={(e) => set(e.target.value)} className="campo" />
       )}
